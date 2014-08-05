@@ -1,0 +1,8 @@
+/* Make font white on dark ground.*/
+body {
+    color: white;
+}
+
+button.danger {
+    background-color: red;
+}
