@@ -7,10 +7,22 @@ set parameters, for a convenient interface
 to the safify-API.
 */
 
+/// <reference path="../vendor/mithril.d.ts" />
+/// <reference path="extend.js" />
+
+// Helper function which returns the URL encoding of
+// the object.
+var toURLEncoding = function(obj/*::{}*/)/*::string*/ {
+    return Object.keys(obj).map(function (prop) {
+        return encodeURIComponent(prop) + "="
+        	 + encodeURIComponent(obj[prop]);
+    }).join("&");
+};
+
 var s = (function(s) {
     
-    s.request = function(options) {
-    	return m.request(_.defaults(options, {
+    s.request = function(options/*::MithrilXHROptions*/)/*::MithrilPromise*/ {
+    	var defaults = {
             extract: function(xhr) {
                 if (xhr.status == 200 || xhr.status == 201) {
                     // return payload
@@ -21,8 +33,19 @@ var s = (function(s) {
                 }
             },
             
-            serialize: function()
-        }));    
+            serialize: toURLEncoding,
+            
+            deserialize: function(data) {
+            	return data;
+            },
+            
+            config: function(xhr) {
+            	xhr.setRequestHeader('Content-Type',
+                	'application/x-www-form-urlencoded; charset=UTF-8');
+            } 
+        };
+        
+        return m.request(s.extend(defaults, options));
     };
     
     return s;

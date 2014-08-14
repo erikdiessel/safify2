@@ -17,9 +17,11 @@ queue.
 */
 
 setTimeout(function() {
-   // TODO replace "generator" by "/"
-   m.route(document.body, "generator", {
-        
-       "generator": s.generator
-   }); 
+    // TODO replace "generator" by "/"
+    m.route(document.body, "/", {
+   		"/": s.login,
+        "overview": s.overview,
+        "edit/:entryId": s.edit,
+        "generator": s.generator
+    }); 
 });

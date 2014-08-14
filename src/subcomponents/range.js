@@ -7,6 +7,8 @@ together with a display of the current value.
 
 */
 
+/// <reference path="../vendor/mithril.d.ts" />
+
 var s = (function(s) {
     s.range = {};
     

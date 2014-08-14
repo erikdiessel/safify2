@@ -1,0 +1,37 @@
+{
+  "name": "mithril",
+  "version": "0.1.19",
+  "main": "mithril.min.js",
+  "description": "A Javascript Framework for building brilliant applications",
+  "authors": [
+    "Leo Horie <lhorie@hotmail.com>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "*.html",
+    "*.css",
+    "*.zip",
+    "*.json",
+    "mithril-tests.js",
+    "archive",
+    "comparisons",
+    "lib",
+    "tools"
+  ],
+  "keywords": [
+    "mithril",
+    "mvc",
+    "framework"
+  ],
+  "homepage": "https://github.com/lhorie/mithril",
+  "_release": "0.1.19",
+  "_resolution": {
+    "type": "version",
+    "tag": "v0.1.19",
+    "commit": "2416b5b3505ad68d9519b77d1e8cb278d1903f95"
+  },
+  "_source": "git://github.com/lhorie/mithril.git",
+  "_target": "~0.1.19",
+  "_originalSource": "mithril",
+  "_direct": true
+}

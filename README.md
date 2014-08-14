@@ -44,3 +44,10 @@ It allows us to keep only the relevant parts in the DOM and
 to create dynamically the html from the javascript-models.
 Because it doesn't impose on us special classes to use, we can
 use a plain-old javascript model and controller.
+
+
+New features
+------------
+
+### Automatic login with bookmarklet
+We give a bookmarklet to the user, whh

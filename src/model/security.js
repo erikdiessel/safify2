@@ -23,6 +23,8 @@ cryptographic random number generator (which
 is not directly available in javascript).
 */
 
+/// <reference path="../vendor/sjcl.d.ts" />
+
 var s = (function(s) {
     
     /*
@@ -53,7 +55,8 @@ var s = (function(s) {
     var oldUsername;
     var oldPassword;
     
-    s.clientPassword = function(username, password) {
+    s.clientPassword = function(username/*::string*/,
+    							password/*::string*/)/*::string*/ {
         
         // When the value is already computed, (with
         // the same username and password), return
@@ -148,7 +151,8 @@ var s = (function(s) {
     var oldPassword;
     
     
-    s.serverPassword = function(username, password) {
+    s.serverPassword = function(username/*::string*/,
+    							password/*::string*/)/*::string*/ {
         if(serverPassword && username == oldUsername
            && password == oldPassword) {
             return serverPassword;
@@ -158,7 +162,7 @@ var s = (function(s) {
         oldUsername = username;
         oldPassword = password;
         
-    	salt = [184, 83, 26, 133, 22, 40, 115, 123, 141, 115,
+    	var salt = [184, 83, 26, 133, 22, 40, 115, 123, 141, 115,
                39, 53, 168, 172, 49, 165, 106, 215, 114, 180]
        		.concat(sjcl.hash.sha256.hash(username));
                     
@@ -188,12 +192,16 @@ var s = (function(s) {
     vector, so that they can be used standalone
     */
     
-    s.encrypt = function(username, password, data) {
+    s.encrypt = function(username/*::string*/,
+                         password/*::string*/,
+                         data/*::string*/)/*::sjcl.SjclCipherEncrypted*/ {
         var key = s.clientPassword(username, password);
         return sjcl.encrypt(key, data);
     };
     
-    s.decrypt = function(username, password, data) {
+    s.decrypt = function(username/*::string*/,
+                         password/*::string*/,
+                         data/*::sjcl.SjclCipherEncrypted*/)/*::string*/ {
     	var key = s.clientPassword(username, password);
         return sjcl.decrypt(key, data);
     };

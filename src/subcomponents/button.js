@@ -21,8 +21,6 @@ var s = (function(s) {
     //   label: String,
     //   // if true, button is styled as call-to action button:
     //   callToAction: bool, 
-    //   // if true, button is tyled as dangerous action (red)
-    //   danger: bool,
     //   large: bool,
     //   quiet: bool,
     //   // string of additonally attached classes
