@@ -487,8 +487,11 @@ Mithril = m = new function app(window) {
 		else window.scrollTo(0, 0)
 	}
 	function buildQueryString(object, prefix) {
+    
 		var str = []
 		for(var prop in object) {
+        	if(!object.hasOwnProperty(prop))
+            	continue;
 			var key = prefix ? prefix + "[" + prop + "]" : prop, value = object[prop]
 			str.push(typeof value == "object" ? buildQueryString(value, key) : encodeURIComponent(key) + "=" + encodeURIComponent(value))
 		}
