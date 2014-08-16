@@ -16,7 +16,6 @@ var s = (function(s) {
             generate: "Generate",
             back: "Back",
             passwords: "Passwords",
-            generator: "Generator",
             create_entry_with_generated_password: "Create entry with this password"
         },
         de: {
@@ -28,7 +27,6 @@ var s = (function(s) {
             generate: "Generieren",
             back: "Zurück",
             passwords: "Passwörter",
-            generator: "Generator",
             create_entry_with_generated_password: "Eintrag mit diesem Passwort erstellen"
         },
         fr: {
@@ -40,7 +38,6 @@ var s = (function(s) {
             generate: "Générer",
             back: "Retour",
             passwords: "Mots de passe",
-            generator: "Génératrice",
             create_entry_with_generated_password: "Créer un article avec ce mot de passe"
         }
     };

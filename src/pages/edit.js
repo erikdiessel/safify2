@@ -16,7 +16,12 @@ var s = (function(s) {
     
     	this.entryId = m.route.param("entryId");
         
-        this.entry = user.entries[this.entryId];
+        this.entry = user.entries.getEntry(this.entryId);
+        
+        this.saveEntry = function() {
+        	user.entries.setEntry(this.entryId, entry);
+         	m.route('overview');   
+        }
         
         // TODO: Change this into displaying a confirmation
         // dialog first
@@ -39,6 +44,11 @@ var s = (function(s) {
             	type: 'text',
                 label: ctrl.l.password,
                 value: ctrl.entry.password
+            }),
+            s.button({
+            	onclick: ctrl.saveEntry,
+                label: ctrl.l.save,
+                callToAction: true
             }),
             s.button({
             	label: ctrl.l.delete,

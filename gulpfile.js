@@ -17,7 +17,8 @@ gulp.task('test', function() {
       'bower_components/mithril/mithril.js',
       'bower_components/sjcl/sjcl.js',
       'bower_components/underscore/underscore.js',
-      'src/**/*.js',
+      'framework.js',
+      'safify.js',
       'spec/*.js'
     ])
     .pipe(karma({

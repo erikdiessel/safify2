@@ -1,0 +1,35 @@
+{
+  "name": "safify2",
+  "version": "0.1.0",
+  "description": "Password manager webapp",
+  "main": "gulpfile.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "dependencies": {
+    "gulp": "~3.8.6",
+    "gulp-concat": "~2.3.4",
+    "gulp-karma": "~0.0.4",
+    "karma": "~0.12.19",
+    "karma-coverage": "~0.2.5",
+    "karma-jasmine": "~0.1.5",
+    "karma-phantomjs-launcher": "~0.1.4",
+    "karma-story-reporter": "~0.2.2"
+  },
+  "devDependencies": {
+    "karma-jasmine": "~0.2.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/erikdiessel/safify2.git"
+  },
+  "author": "Erik Diessel",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/erikdiessel/safify2/issues"
+  },
+  "homepage": "https://github.com/erikdiessel/safify2"
+}

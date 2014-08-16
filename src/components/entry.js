@@ -29,4 +29,4 @@ var s = (function(s) {
     };
     
     return s;
-}(s || {}))
+}(s || {}));

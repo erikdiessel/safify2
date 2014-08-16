@@ -69,7 +69,7 @@ var s = (function (s) {
     s.retrieveData.USERNAME_NOT_FOUND_STATUS = 403;
     s.retrieveData.no_connection =
     function(status/*::number*/)/*::boolean*/ {
-    	return status == 404 || status == 0;
+    	return status === 404 || status === 0;
     };
     
 

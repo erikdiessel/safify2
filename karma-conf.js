@@ -16,8 +16,9 @@ module.exports = function(config) {
     // list of files / patterns to load in the browser
     files: [
       'bower_components/mithril/mithril.js',
-      'bower_components/sjcl/sjcl.js',  
-      'src/**/*.js',
+      'bower_components/sjcl/sjcl.js',
+      'framework.js',
+      'safify.js',
       'spec/*.js'
     ],
 

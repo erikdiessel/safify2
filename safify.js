@@ -29,7 +29,83 @@ var s = (function(s) {
     };
     
     return s;
-}(s || {}))
+}(s || {}));
+/*
+Autofill module
+===============
+
+This module provides all functionality for
+the autofilling feature.
+It contains a function which autofills and 
+autosubmits a given form.
+*/
+
+(function() {
+	
+namespace('s.helpers');
+
+
+// Converts a given html-string into the element represented
+// by that string.
+var htmlToElement = function(html/*::string*/)/*::HTMLElement*/ {
+	var div = document.createElement('div');
+    div.innerHTML = html;
+    return div.children[0];
+};
+
+
+/* Heuristic for finding username and password form inputs:
+The username-input field is the input tag with type 'text'
+or 'email' with no value attribute or value=""
+The password field is simple the input with type='password'.
+*/
+
+// Return the input inside the form where the username is entered
+var getUsernameInput = function(form/*::HTMLElement*/)/*::HTMLElement*/ {
+	// We have to user Array.prototype.slice.call here to convert the 
+    // nodelist returned by getElementsByTagName into a regular array.
+	return Array.prototype.slice.call(form.getElementsByTagName('input'))
+    	.filter(function(inputTag) {
+            return (inputTag.type == 'email' || inputTag.type == 'text')
+                && inputTag.value == ""; 	 
+    })[0]; // return the first that matches (should only be one)
+};
+
+var getPasswordInput = function(form/*::HTMLElement*/)/*::HTMLElement*/ {
+	return Array.prototype.slice.call(form.getElementsByTagName('input'))
+    	.filter(function(inputTag) {
+    		return inputTag.type == 'password';
+    })[0]; // return the first that matches (should only be one)	
+};
+
+var setActionOriginIfNeeded =
+function(form/*::HTMLElement*/, siteOrigin/*::string*/)/*::void*/ {
+	// check if action-url is relative 
+    // this is exactly then the case when the origin of safify
+    // is the origin of form.action, since it's automatically
+    // inserted during the creation of the form element
+	if (form.action.indexOf(document.location.origin) != -1) {
+    	form.action = siteOrigin +
+        	form.action.substring(document.location.origin.length);
+    }
+};
+
+
+s.helpers.filledForm = function(formHTML, siteOrigin, username, password) {
+	var form = htmlToElement(formHTML);
+    var usernameInput = getUsernameInput(form);
+    var passwordInput = getPasswordInput(form);
+    if(usernameInput) {
+        usernameInput.value = username;	
+    }
+    passwordInput.value = password;
+    setActionOriginIfNeeded(form, siteOrigin);
+    return form; // ready to be submitted
+};
+
+
+
+}());
 /*
 Function.bind polyfill
 ======================
@@ -73,7 +149,7 @@ var s = (function(s) {
     
     // Mutates *base*
     s.copy = function(base, copying) {
-        for(key in copying) {
+        for(var key in copying) {
             base[key] = copying[key];
         };
     };
@@ -133,16 +209,18 @@ to the safify-API.
 /// <reference path="../vendor/mithril.d.ts" />
 /// <reference path="extend.js" />
 
-// Helper function which returns the URL encoding of
-// the object.
-var toURLEncoding = function(obj/*::{}*/)/*::string*/ {
-    return Object.keys(obj).map(function (prop) {
-        return encodeURIComponent(prop) + "="
-        	 + encodeURIComponent(obj[prop]);
-    }).join("&");
-};
+
 
 var s = (function(s) {
+
+    // Helper function which returns the URL encoding of
+    // the object.
+    var toURLEncoding = function(obj/*::{}*/)/*::string*/ {
+        return Object.keys(obj).map(function (prop) {
+            return encodeURIComponent(prop) + "="
+                 + encodeURIComponent(obj[prop]);
+        }).join("&");
+    };
     
     s.request = function(options/*::MithrilXHROptions*/)/*::MithrilPromise*/ {
     	var defaults = {
@@ -191,7 +269,6 @@ var s = (function(s) {
             generate: "Generate",
             back: "Back",
             passwords: "Passwords",
-            generator: "Generator",
             create_entry_with_generated_password: "Create entry with this password"
         },
         de: {
@@ -203,7 +280,6 @@ var s = (function(s) {
             generate: "Generieren",
             back: "Zurück",
             passwords: "Passwörter",
-            generator: "Generator",
             create_entry_with_generated_password: "Eintrag mit diesem Passwort erstellen"
         },
         fr: {
@@ -215,7 +291,6 @@ var s = (function(s) {
             generate: "Générer",
             back: "Retour",
             passwords: "Mots de passe",
-            generator: "Génératrice",
             create_entry_with_generated_password: "Créer un article avec ce mot de passe"
         }
     };
@@ -256,12 +331,13 @@ queue.
 */
 
 setTimeout(function() {
-    // TODO replace "generator" by "/"
-    m.route(document.body, "/", {
-   		"/": s.login,
+    m.route(document.body, "", {
+   		"": s.login,
         "overview": s.overview,
         "edit/:entryId": s.edit,
         "generator": s.generator
+        // "autofill":
+        // "register":
     }); 
 });
 
@@ -336,7 +412,7 @@ var s = (function (s) {
     s.retrieveData.USERNAME_NOT_FOUND_STATUS = 403;
     s.retrieveData.no_connection =
     function(status/*::number*/)/*::boolean*/ {
-    	return status == 404 || status == 0;
+    	return status === 404 || status === 0;
     };
     
 
@@ -417,6 +493,36 @@ var s = (function (s) {
     return s;
 }(s || {}));
 
+/*
+Entry class
+===========
+
+Represents an entry and provides utility methods for it.
+*/
+
+(function() {
+	namespace('s');
+    s.Entry = function(blueprint/*::{}?*/) {
+    	// initialize attributes
+        blueprint = blueprint || {};
+    	this.title    = m.prop(blueprint.title || "");
+        this.username = m.prop(blueprint.username || "");
+        this.password = m.prop(blueprint.password || "");
+    }
+    
+    s.Entry.prototype.serialize = function() {
+    	return {
+        	title: this.title,
+        	username: this.username,
+            password: this.password
+        };
+    };
+    
+    // static function
+    s.Entry.deserialize = function(entry)/*::Entry*/ {
+		return new Entry(entry);
+    }
+}());
 /*
 The model part of the generator
 ==============================
@@ -720,12 +826,14 @@ var s = (function(s) {
         this.username = username;
         this.password = password;
         
-        s.retrieveData(username, this.serverPassword(), {
-            onSuccess: this.setPasswordList.bind(this),
-            
-            
-            
-        });
+        // TODO: login on server
+        
+//         s.retrieveData(username, this.serverPassword(), {
+//             onSuccess: this.setPasswordList.bind(this),
+
+
+
+//         });
     };
     
     User.prototype.serverPassword = function() {
@@ -736,24 +844,76 @@ var s = (function(s) {
         return s.clientPassword(this.username, this.password);
     };
         
+    /* TODO: not finished implementation    
     User.prototype.setEntries = function(data) {
-        this.passwordList = s.decrypt(username,
+        this.passwordList = s.decrypt(this.username,
         	this.clientPassword(),
             data        		         
         );
-    }
+    };
+    */
+    
+    // Returns a copy of the entry with the specified index.
+    // Changing values of the returned copy should not change
+    // the original entry;
+    User.prototype.getEntry = function(index) {
+    	var entry = this.entries[index];
+    	return {
+        	title:    m.prop(entry.title),
+        	username: m.prop(entry.username),
+            password: m.prop(entry.password)
+        };
+    };
+    
+    // Sets the entry with the given *index* to the *newEntry*
+    // *newEntry should store its attributes as m.prop-properties
+    // It can therefore be used directly with User.getEntry
+    User.prototype.setEntry
+    = function(index/*::number*/, newEntry/*::Entry*/)/*::void*/ {
+    	this.entries[index] = newEntry.serialize();
+    };
+    
+    // Inserts *newEntry* in the entries list.
+    // *newEntry* should store its attributes as m.prop-properties.
+    User.prototype.addEntry = function(newEntry) {
+    	this.entries.push(newEntry.serialize())
+    };
     
     // Removes the entry with the specified index 
     // from the entries list
     User.prototype.deleteEntry =
     function(index/*::number*/)/*::void*/ {
     	this.entries.splice(index, 1);
-    }
+    };
         
     s.user = User();    
     
     return s;
 }(s || {}));
+(function() {
+
+namespace('s.pages.autofill');
+
+/// <reference path="../vendor/mithril.d.ts" />
+
+s.pages.autofill.controller = function() {
+
+    var handle = function(origin, data) {
+    	this.url = origin;
+        this.data = data;
+    }.bind(this);
+    
+    window.addEventListener('message', function(event) {
+    	var origin = event.origin;
+        var data = event.data;
+        handle(origin, data);
+    });
+    
+    
+    
+}
+
+}());
 /*
 Editing page
 ============
@@ -772,7 +932,12 @@ var s = (function(s) {
     
     	this.entryId = m.route.param("entryId");
         
-        this.entry = user.entries[this.entryId];
+        this.entry = user.entries.getEntry(this.entryId);
+        
+        this.saveEntry = function() {
+        	user.entries.setEntry(this.entryId, entry);
+         	m.route('overview');   
+        }
         
         // TODO: Change this into displaying a confirmation
         // dialog first
@@ -795,6 +960,11 @@ var s = (function(s) {
             	type: 'text',
                 label: ctrl.l.password,
                 value: ctrl.entry.password
+            }),
+            s.button({
+            	onclick: ctrl.saveEntry,
+                label: ctrl.l.save,
+                callToAction: true
             }),
             s.button({
             	label: ctrl.l.delete,
@@ -921,10 +1091,12 @@ var s = (function(s) {
         }.bind(this);
         
         // Redirect to the generator page
-        this.toGenerator = m.route.bind(this, 'generator');
+        // We pass along undefined, so that no other argument
+        // is appended by calling this bounded function
+        this.toGenerator = function() { m.route('generator'); };
         
-        this.toRegistration = m.route.bind(this, 'register');
-    }
+        this.toRegistration = function() { m.route('register'); };
+    };
     
     // TODO: augment the markup
     s.login.view = function(ctrl) {
@@ -955,7 +1127,7 @@ var s = (function(s) {
             })
             
         ])
-    }
+    };
     
     return s;
 }(s || {}));
@@ -981,7 +1153,7 @@ var s = (function(s) {
         });
     };
     
-    s.overview.map = function(ctrl) {
+    s.overview.view = function(ctrl) {
     	return m('div', ctrl.entryControllers.map(function(entryCtrl) {
         	return s.entry.view(entryCtrl);
         }));

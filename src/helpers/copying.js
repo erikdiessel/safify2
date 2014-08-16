@@ -7,7 +7,7 @@ var s = (function(s) {
     
     // Mutates *base*
     s.copy = function(base, copying) {
-        for(key in copying) {
+        for(var key in copying) {
             base[key] = copying[key];
         };
     };

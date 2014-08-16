@@ -24,7 +24,14 @@ describe("The API interface", function() {
         	throw "registerAndSave needs done parameter";
         }
         
-        console.log(username);
+        // Alternative implementation:
+        return s.registerUser(username, password)
+        	.thereafter(s.savePasswordList.bind(this,
+            			username, password, data))
+            /*.otherwise(function() {
+            	throw "should not be called";
+                done();
+            })*/
     
     	return s.registerUser(username, password)
         	.then(s.savePasswordList.bind(this,
@@ -51,6 +58,18 @@ describe("The API interface", function() {
     	it("allows registering", function(done) {
         	var username = randomUsername();
         	var password = "pa$$word";
+            
+            // alternative implementation
+			s.registerUser(username, password)
+            .onStatus(201, function(data) {
+            	expect(data).toEqual("Successfully registered");
+                done();
+            }).otherwise(function() {
+            	throw "Should not be called";
+                done();
+            })
+           
+            
         	
         	s.registerUser(username, password)
             .then(function(data) {
@@ -65,6 +84,15 @@ describe("The API interface", function() {
        		 var username = randomUsername();
              var password = "pa$$word";
              var data = "some important data"
+             
+             // Alternative implementation:
+             registerAndSave(username, password, data)
+             .onStatus(200, function(response) {
+             	expect(response).toEqual("Successfully updated");
+             }).otherwise(function() {
+             	throw "Error doing the request";
+             });
+             
              
              registerAndSave(username, password, data, done)
              .then(function(response) {
@@ -83,6 +111,18 @@ describe("The API interface", function() {
             var username = randomUsername();
         	var password = "pa$$word";
         	var data1 = "data1";
+        
+        	// Alternative implementation
+            registerAndSave(username, password, data1)
+            .thereafter(s.retrieveData.bind(this, username, password))
+            .onStatus(200, function(response) {
+            	expect(response).toEqual(data1);
+                done();
+            })
+            .otherwise(function() {
+            	throw "Error during request";
+                done();
+            })
         
         	registerAndSave(username, password, data1, done)
         	.then(s.retrieveData.bind(this,
@@ -109,6 +149,18 @@ describe("The API interface", function() {
             var username = randomUsername();
             var password = "pas$$word";
             var data = "data";
+            
+            // Alternative implementation
+            
+            registerAnSave(username, password, data)
+            .thereafter(s.retrieveData.bind(this, username, "wrong_password"))
+            .onStatus(s.AUTHENTIFICATION_FAILED_STATUS, function(response) {
+            	expect(response).toEqual("Unauthorized access");
+                done();
+            }).otherwise(function() {
+            	throw "Error during request";
+                done();
+            })
             
             registerAndSave(username, password, data, done)
            	.then(s.retrieveData.bind(this, 

@@ -24,10 +24,12 @@ var s = (function(s) {
         }.bind(this);
         
         // Redirect to the generator page
-        this.toGenerator = m.route.bind(this, 'generator');
+        // We pass along undefined, so that no other argument
+        // is appended by calling this bounded function
+        this.toGenerator = function() { m.route('generator'); };
         
-        this.toRegistration = m.route.bind(this, 'register');
-    }
+        this.toRegistration = function() { m.route('register'); };
+    };
     
     // TODO: augment the markup
     s.login.view = function(ctrl) {

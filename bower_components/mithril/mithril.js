@@ -490,8 +490,9 @@ Mithril = m = new function app(window) {
     
 		var str = []
 		for(var prop in object) {
-        	if(!object.hasOwnProperty(prop))
-            	continue;
+        	// TODO: Goes into endless recursion, because
+            // object 'window' has the property 'window'
+            // -> prevent that this is called with object=window
 			var key = prefix ? prefix + "[" + prop + "]" : prop, value = object[prop]
 			str.push(typeof value == "object" ? buildQueryString(value, key) : encodeURIComponent(key) + "=" + encodeURIComponent(value))
 		}

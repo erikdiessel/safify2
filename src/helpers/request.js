@@ -10,16 +10,22 @@ to the safify-API.
 /// <reference path="../vendor/mithril.d.ts" />
 /// <reference path="extend.js" />
 
-// Helper function which returns the URL encoding of
-// the object.
-var toURLEncoding = function(obj/*::{}*/)/*::string*/ {
-    return Object.keys(obj).map(function (prop) {
-        return encodeURIComponent(prop) + "="
-        	 + encodeURIComponent(obj[prop]);
-    }).join("&");
-};
+
 
 var s = (function(s) {
+
+    // Helper function which returns the URL encoding of
+    // the object.
+    var toURLEncoding = function(obj/*::{}*/)/*::string*/ {
+        return Object.keys(obj).map(function (prop) {
+            return encodeURIComponent(prop) + "="
+                 + encodeURIComponent(obj[prop]);
+        }).join("&");
+    };
+    
+    var Request = function() {
+    
+    }
     
     s.request = function(options/*::MithrilXHROptions*/)/*::MithrilPromise*/ {
     	var defaults = {

@@ -20,7 +20,7 @@ var s = (function(s) {
         });
     };
     
-    s.overview.map = function(ctrl) {
+    s.overview.view = function(ctrl) {
     	return m('div', ctrl.entryControllers.map(function(entryCtrl) {
         	return s.entry.view(entryCtrl);
         }));
