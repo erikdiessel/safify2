@@ -51,7 +51,7 @@ var s = (function (s) {
     s.retrieveData = 
     function (username/*::string*/,
     		  password/*::string*/)/*::MithrilPromise*/ {
-        return s.request({
+        return new s.Request({
         	method: "GET",
             url: API_URL('passwords'),
             data: {
@@ -80,7 +80,7 @@ var s = (function (s) {
     // (via s.checkUsernameUsed).
     s.registerUser = function (username/*::string*/,
     						   password/*::string*/)/*::MithrilPromise*/ {
-    	return s.request({
+    	return new s.Request({
         	method: "POST",
             url: API_URL("register"),
             data: {
@@ -98,7 +98,7 @@ var s = (function (s) {
     // }
     s.checkForUsername = 
     function (username/*::string*/)/*::MithrilPromise*/ {
-    	return s.request({
+    	return new s.Request({
         	method: "GET",
             url: API_URL("username_not_used"),
             data: {
@@ -119,7 +119,7 @@ var s = (function (s) {
     function (username/*::string*/,  oldPassword/*::string*/,
               newPassword/*::string*/)/*::MithrilPromise*/ {
               
-        return s.request({
+        return new s.Request({
         	method: 'POST',
             url: API_URL('change_password'),
             data: {
@@ -136,7 +136,7 @@ var s = (function (s) {
     function (username/*::string*/, password/*::string*/,
     		  data/*::string*/)/*::MithrilPromise*/ { 
               
-        return s.request({
+        return new s.Request({
         	method: 'POST',
             url: API_URL('passwords'),
             data: {

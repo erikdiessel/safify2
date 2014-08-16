@@ -85,13 +85,17 @@ function(form/*::HTMLElement*/, siteOrigin/*::string*/)/*::void*/ {
     // is the origin of form.action, since it's automatically
     // inserted during the creation of the form element
 	if (form.action.indexOf(document.location.origin) != -1) {
+    	// Possible problem: If siteOrigin already contains a 
+        // '/' at the end, we get a double slash.
     	form.action = siteOrigin +
         	form.action.substring(document.location.origin.length);
     }
 };
 
 
-s.helpers.filledForm = function(formHTML, siteOrigin, username, password) {
+s.helpers.filledForm = 
+function(formHTML/*::string*/, siteOrigin/*::string*/,
+	     username/*::string*/, password/*::string*/)/*::HTMLElement*/ {
 	var form = htmlToElement(formHTML);
     var usernameInput = getUsernameInput(form);
     var passwordInput = getPasswordInput(form);
@@ -210,6 +214,13 @@ to the safify-API.
 /// <reference path="extend.js" />
 
 
+/*:
+interface RequestConfig {
+	method: string;
+    url: string;
+    data: {};
+}
+*/
 
 var s = (function(s) {
 
@@ -222,32 +233,80 @@ var s = (function(s) {
         }).join("&");
     };
     
-    s.request = function(options/*::MithrilXHROptions*/)/*::MithrilPromise*/ {
-    	var defaults = {
-            extract: function(xhr) {
-                if (xhr.status == 200 || xhr.status == 201) {
-                    // return payload
-                    return xhr.responseText;
-                } else {
-                    // return error code
-                    return xhr.status;
-                }
-            },
-            
-            serialize: toURLEncoding,
-            
-            deserialize: function(data) {
-            	return data;
-            },
-            
-            config: function(xhr) {
-            	xhr.setRequestHeader('Content-Type',
-                	'application/x-www-form-urlencoded; charset=UTF-8');
-            } 
-        };
+    s.Request = function(config/*::RequestConfig*/) {
+    	// attributes
+    	this.next = undefined;
+        this.handlers = {};
+        this.defaultHandler = undefined;
         
-        return m.request(s.extend(defaults, options));
+        this.request = new XMLHttpRequest();
+                
+        var isGetRequest = config.method.toLowerCase() == "get";
+        
+        var encodedData = toURLEncoding(config.data);
+        
+        var url = config.url + (isGetRequest ? "?" + encodedData : "");
+                                
+        this.payload = isGetRequest ? "" : encodedData;
+        
+        this.request.open(config.method, url);
+        
+        this.request.setRequestHeader('Content-Type',
+                	'application/x-www-form-urlencoded; charset=UTF-8');
+        
+        
+        this.request.onload = function() {
+        	if(this.handlers[this.request.status]) {
+            	// call the corresponding handler with the response
+            	this.handlers[this.request.status](this.request.responseText);
+            } // there is no specific handler for this status code
+            else {
+            	if(this.getDefaultHandler()) {
+                	this.defaultHandler(this.request.responseText);
+                } else { // unhandled error
+                	throw "Error during request for: " + url +
+                    	"with data: " + JSON.stringify(config.data);
+                }
+            }
+            if(this.next) {
+                // execute next request
+                this.next.send();
+            }
+        }.bind(this);
     };
+    
+    s.Request.prototype.thereafter = 
+    function(nextRequest/*::Request*/)/*::Request*/ {
+    	this.next = nextRequest;
+        return nextRequest;
+    }; 
+    
+    s.Request.prototype.onStatus = function(status/*::number*/, callback) {
+    	this.handlers[status] = callback;
+        return this;
+    };
+    
+    s.Request.prototype.otherwise = function(callback) {
+    	this.handlers['default'] = callback;
+        return this;
+    }; 
+    
+    s.Request.prototype.send = function()/*::void*/ {
+    	this.request.send(this.payload);
+    }
+    
+    s.Request.prototype.getDefaultHandler = function() {
+    	// Search recursively for a defaultHandler
+    	if(this.defaultHandler) {
+        	return this.defaultHandler;
+        } else {
+        	if(this.next) {
+            	return this.next.getDefaultHandler();
+            } else {
+            	return undefined;
+            }
+        }
+    }
     
     return s;
 }(s || {}));
@@ -394,7 +453,7 @@ var s = (function (s) {
     s.retrieveData = 
     function (username/*::string*/,
     		  password/*::string*/)/*::MithrilPromise*/ {
-        return s.request({
+        return new s.Request({
         	method: "GET",
             url: API_URL('passwords'),
             data: {
@@ -423,7 +482,7 @@ var s = (function (s) {
     // (via s.checkUsernameUsed).
     s.registerUser = function (username/*::string*/,
     						   password/*::string*/)/*::MithrilPromise*/ {
-    	return s.request({
+    	return new s.Request({
         	method: "POST",
             url: API_URL("register"),
             data: {
@@ -441,7 +500,7 @@ var s = (function (s) {
     // }
     s.checkForUsername = 
     function (username/*::string*/)/*::MithrilPromise*/ {
-    	return s.request({
+    	return new s.Request({
         	method: "GET",
             url: API_URL("username_not_used"),
             data: {
@@ -462,7 +521,7 @@ var s = (function (s) {
     function (username/*::string*/,  oldPassword/*::string*/,
               newPassword/*::string*/)/*::MithrilPromise*/ {
               
-        return s.request({
+        return new s.Request({
         	method: 'POST',
             url: API_URL('change_password'),
             data: {
@@ -479,7 +538,7 @@ var s = (function (s) {
     function (username/*::string*/, password/*::string*/,
     		  data/*::string*/)/*::MithrilPromise*/ { 
               
-        return s.request({
+        return new s.Request({
         	method: 'POST',
             url: API_URL('passwords'),
             data: {

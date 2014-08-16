@@ -19,24 +19,20 @@ describe("The API interface", function() {
         	Math.random().toString().substring(2,17);
     };
     
-    var registerAndSave = function(username, password, data, done) {
-    	if(done == undefined) {
-        	throw "registerAndSave needs done parameter";
-        }
+    var registerAndSave = function(username, password, data) {
         
         // Alternative implementation:
         return s.registerUser(username, password)
-        	.thereafter(s.savePasswordList.bind(this,
-            			username, password, data))
+        .thereafter(s.savePasswordList(username, password, data));
             /*.otherwise(function() {
             	throw "should not be called";
                 done();
             })*/
     
-    	return s.registerUser(username, password)
-        	.then(s.savePasswordList.bind(this,
-        		username, password, data),
-                shouldNotBeCalled(done))   
+//     	return s.registerUser(username, password)
+//         	.then(s.savePasswordList.bind(this,
+//         		username, password, data),
+//                 shouldNotBeCalled(done))   
     };
     
     // This function fails an expectation, if it is called.
@@ -67,15 +63,16 @@ describe("The API interface", function() {
             }).otherwise(function() {
             	throw "Should not be called";
                 done();
-            })
+            }).send();
            
             
-        	
-        	s.registerUser(username, password)
+        	/*
+            s.registerUser(username, password)
             .then(function(data) {
-            	expect(data).toEqual("Successfully registered");
+                expect(data).toEqual("Successfully registered");
                 done();
             }, shouldNotBeCalled(done));
+            */
         });
     });
     
@@ -91,14 +88,15 @@ describe("The API interface", function() {
              	expect(response).toEqual("Successfully updated");
              }).otherwise(function() {
              	throw "Error doing the request";
-             });
+             }).send();
              
-             
+             /*
              registerAndSave(username, password, data, done)
              .then(function(response) {
              	expect(response).toEqual("Successfully updated")
                 done();
              }, shouldNotBeCalled(done));
+             */
         });
     });
     
@@ -114,16 +112,16 @@ describe("The API interface", function() {
         
         	// Alternative implementation
             registerAndSave(username, password, data1)
-            .thereafter(s.retrieveData.bind(this, username, password))
+            .thereafter(s.retrieveData(username, password))
             .onStatus(200, function(response) {
             	expect(response).toEqual(data1);
                 done();
-            })
-            .otherwise(function() {
+            }).otherwise(function() {
             	throw "Error during request";
                 done();
-            })
+            }).send();
         
+        	/*
         	registerAndSave(username, password, data1, done)
         	.then(s.retrieveData.bind(this,
                 	username, password, {}),
@@ -134,6 +132,7 @@ describe("The API interface", function() {
             },
                 shouldNotBeCalled(done)
             );
+            */
         });
         
 
@@ -152,16 +151,17 @@ describe("The API interface", function() {
             
             // Alternative implementation
             
-            registerAnSave(username, password, data)
-            .thereafter(s.retrieveData.bind(this, username, "wrong_password"))
+            registerAndSave(username, password, data)
+            .thereafter(s.retrieveData(username, "wrong_password"))
             .onStatus(s.AUTHENTIFICATION_FAILED_STATUS, function(response) {
             	expect(response).toEqual("Unauthorized access");
                 done();
             }).otherwise(function() {
             	throw "Error during request";
                 done();
-            })
+            }).send();
             
+            /*
             registerAndSave(username, password, data, done)
            	.then(s.retrieveData.bind(this, 
              		username, "wrong_password"),
@@ -173,7 +173,8 @@ describe("The API interface", function() {
                     );
                     done();
                 }
-			);            
+			);
+            */
         });        
     });
 });

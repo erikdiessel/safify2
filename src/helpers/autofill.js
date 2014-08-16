@@ -63,7 +63,7 @@ function(form/*::HTMLElement*/, siteOrigin/*::string*/)/*::void*/ {
 
 s.helpers.filledForm = 
 function(formHTML/*::string*/, siteOrigin/*::string*/,
-	     username/*::string*/, password/*::string+/)/*::HTMLElement*/ {
+	     username/*::string*/, password/*::string*/)/*::HTMLElement*/ {
 	var form = htmlToElement(formHTML);
     var usernameInput = getUsernameInput(form);
     var passwordInput = getPasswordInput(form);
