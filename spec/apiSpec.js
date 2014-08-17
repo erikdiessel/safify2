@@ -20,59 +20,30 @@ describe("The API interface", function() {
     };
     
     var registerAndSave = function(username, password, data) {
-        
-        // Alternative implementation:
         return s.registerUser(username, password)
-        .thereafter(s.savePasswordList(username, password, data));
-            /*.otherwise(function() {
-            	throw "should not be called";
-                done();
-            })*/
-    
-//     	return s.registerUser(username, password)
-//         	.then(s.savePasswordList.bind(this,
-//         		username, password, data),
-//                 shouldNotBeCalled(done))   
+        .otherwise(function() {/* everything o.k. */})
+        .thereafter(s.savePasswordList(username, password, data))
+        .otherwise(function() { /* everything o.k. */});
     };
-    
-    // This function fails an expectation, if it is called.
-    // Use it as a placeholder for error handling functions
-    var shouldNotBeCalled = function(done) {
-    	if(done == undefined ) {
-        	throw "shouldNotBeCalled needs done parameter";
-        }
-    	return function(argument) {
-            var isCalled = true;
-            expect(argument).toEqual("notCalled");
-            done();        
-        };
 
-    };
-    
-    
     describe("s.registerUser", function() {
     	it("allows registering", function(done) {
         	var username = randomUsername();
         	var password = "pa$$word";
             
-            // alternative implementation
 			s.registerUser(username, password)
-            .onStatus(201, function(data) {
+            .onStatus(s.registerUser.OK_STATUS, function(data) {
             	expect(data).toEqual("Successfully registered");
+                //done();
+            }).thereafter(s.retrieveData(username, password))
+            .onStatus(s.retrieveData.OK_STATUS, function(response) {
+            	expect(response).toEqual("{}");
                 done();
-            }).otherwise(function() {
-            	throw "Should not be called";
+            }).otherwise(function(response) {
+            	throw new Error("Error during the request, "
+                	+ "with response: " + response);
                 done();
             }).send();
-           
-            
-        	/*
-            s.registerUser(username, password)
-            .then(function(data) {
-                expect(data).toEqual("Successfully registered");
-                done();
-            }, shouldNotBeCalled(done));
-            */
         });
     });
     
@@ -82,57 +53,33 @@ describe("The API interface", function() {
              var password = "pa$$word";
              var data = "some important data"
              
-             // Alternative implementation:
              registerAndSave(username, password, data)
-             .onStatus(200, function(response) {
+             .onStatus(s.savePasswordList.OK_STATUS, function(response) {
              	expect(response).toEqual("Successfully updated");
-             }).otherwise(function() {
-             	throw "Error doing the request";
-             }).send();
-             
-             /*
-             registerAndSave(username, password, data, done)
-             .then(function(response) {
-             	expect(response).toEqual("Successfully updated")
                 done();
-             }, shouldNotBeCalled(done));
-             */
+             }).otherwise(function(response) {
+             	throw new Error("Error doing the request,"
+                	+ " response: " + response);
+             }).send();
         });
     });
     
     describe("s.savePasswordList", function() {
         it("allows to save data permanently", function(done) {
-        	if(done == undefined) {
-            	throw("it has undefined done");
-            }
-        
             var username = randomUsername();
         	var password = "pa$$word";
         	var data1 = "data1";
         
-        	// Alternative implementation
             registerAndSave(username, password, data1)
             .thereafter(s.retrieveData(username, password))
-            .onStatus(200, function(response) {
+            .onStatus(s.retrieveData.OK_STATUS, function(response) {
             	expect(response).toEqual(data1);
                 done();
-            }).otherwise(function() {
-            	throw "Error during request";
+            }).otherwise(function(response) {
+            	throw new Error("Error during request, " 
+                	+ " with response: " + response);
                 done();
             }).send();
-        
-        	/*
-        	registerAndSave(username, password, data1, done)
-        	.then(s.retrieveData.bind(this,
-                	username, password, {}),
-                shouldNotBeCalled(done)
-           	).then(function(data) {
-                expect(data).toEqual(data1);
-                done();
-            },
-                shouldNotBeCalled(done)
-            );
-            */
         });
         
 
@@ -141,40 +88,53 @@ describe("The API interface", function() {
     describe("s.retrieveData", function() {
         
         it("executes error handler if password wrong", function(done) {
-        	if(done == undefined) {
-            	throw("it has undefined done");
-            }
-        
             var username = randomUsername();
             var password = "pas$$word";
             var data = "data";
             
-            // Alternative implementation
-            
             registerAndSave(username, password, data)
             .thereafter(s.retrieveData(username, "wrong_password"))
-            .onStatus(s.AUTHENTIFICATION_FAILED_STATUS, function(response) {
-            	expect(response).toEqual("Unauthorized access");
+            .onStatus(s.retrieveData.AUTHENTIFICATION_FAILED_STATUS,
+            function(response) {
+            	expect(response).toEqual("Authentification failed");
                 done();
             }).otherwise(function() {
-            	throw "Error during request";
+            	throw new Error("Error during request");
                 done();
             }).send();
-            
-            /*
-            registerAndSave(username, password, data, done)
-           	.then(s.retrieveData.bind(this, 
-             		username, "wrong_password"),
-            	shouldNotBeCalled(done)
-            ).then(shouldNotBeCalled(done),
-            	function(status) {
-            		expect(status).toEqual(
-                    	s.AUTHENTIFICATION_FAILED_STATUS
-                    );
-                    done();
-                }
-			);
-            */
         });        
     });
+    
+    describe("s.changeServerPassword", function() {
+    	it("accepts only the new password after changing", function(done) {
+        	var username = randomUsername();
+            var firstPassword = "firstPa$$word";
+            var secondPassword = "secondPa$$word";
+            var data = "some_data";
+            
+            registerAndSave(username, password, data)
+            .thereafter(
+            	s.changeServerPassword(username, firstPassword, secondPassword)
+            ).onStatus(s.changeServerPassword.OK_STATUS, function(response) {
+            	expect(response).toEqual("Password changed")
+            }).thereafter(s.retrieveData(username, secondPassword))
+            // the new password works
+            .onStatus(s.retrieveData.OK_STATUS, function(response) {
+            	expect(response).toEqual(data);
+            })
+            // but the old password doesn't work
+            .thereafter(s.retrieveData(username, firstPassword))
+            .onStatus(
+            	s.retrieveData.AUTHENTIFICATION_FAILED_STATUS,
+                function(response) {
+                	expect(response).toEqual("Authentification failed")
+                    done();
+                }
+            ).otherwise(function(response) {
+            	throw new Error("Error during request with response "
+                	+ response);
+                done();
+            });
+        });
+    })
 });

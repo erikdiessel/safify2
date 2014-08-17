@@ -50,7 +50,7 @@ var s = (function (s) {
     
     s.retrieveData = 
     function (username/*::string*/,
-    		  password/*::string*/)/*::MithrilPromise*/ {
+    		  password/*::string*/)/*::Request*/ {
         return new s.Request({
         	method: "GET",
             url: API_URL('passwords'),
@@ -65,13 +65,10 @@ var s = (function (s) {
     // Additional constants for this functions, so
     // that clients don't have to hardcode status
     // codes.
+    s.retrieveData.OK_STATUS = 200;
     s.retrieveData.AUTHENTIFICATION_FAILED_STATUS = 401;
     s.retrieveData.USERNAME_NOT_FOUND_STATUS = 403;
-    s.retrieveData.no_connection =
-    function(status/*::number*/)/*::boolean*/ {
-    	return status === 404 || status === 0;
-    };
-    
+
 
     // This function reqisters a user on the server
     // (via the endpoin '/register').
@@ -90,6 +87,8 @@ var s = (function (s) {
         });
     
     };
+    
+    s.registerUser.OK_STATUS = 201;
 
     // username: string
     // handlers: {
@@ -107,6 +106,7 @@ var s = (function (s) {
         });
     };
     
+    s.checkForUsername.OK_STATUS = 200;
     s.checkForUsername.USERNAME_USED_STATUS = 409;
 
     // Changes the password for authentification on the server
@@ -129,6 +129,8 @@ var s = (function (s) {
             }
         });      
     };
+    
+    s.changeServerPassword.OK_STATUS = 200;
 
     // data: string    The password list to save
     // callback: function     Executed when the request completes
@@ -146,6 +148,8 @@ var s = (function (s) {
             }
         });
     };
+    
+    s.savePasswordList.OK_STATUS = 201;
 
     return s;
 }(s || {}));

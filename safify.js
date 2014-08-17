@@ -238,22 +238,19 @@ var s = (function(s) {
     	this.next = undefined;
         this.handlers = {};
         this.defaultHandler = undefined;
+        this.firstRequest = this;
+        this.request/*::XMLHttpRequest*/ = undefined;
+        this.method = config.method;
         
-        this.request = new XMLHttpRequest();
-                
         var isGetRequest = config.method.toLowerCase() == "get";
         
         var encodedData = toURLEncoding(config.data);
         
-        var url = config.url + (isGetRequest ? "?" + encodedData : "");
+        this.url = config.url + (isGetRequest ? "?" + encodedData : "");
                                 
         this.payload = isGetRequest ? "" : encodedData;
         
-        this.request.open(config.method, url);
-        
-        this.request.setRequestHeader('Content-Type',
-                	'application/x-www-form-urlencoded; charset=UTF-8');
-        
+        this.request = new XMLHttpRequest();
         
         this.request.onload = function() {
         	if(this.handlers[this.request.status]) {
@@ -261,16 +258,17 @@ var s = (function(s) {
             	this.handlers[this.request.status](this.request.responseText);
             } // there is no specific handler for this status code
             else {
-            	if(this.getDefaultHandler()) {
-                	this.defaultHandler(this.request.responseText);
+            	var defaultHandler = this.getDefaultHandler();
+            	if(defaultHandler) {
+                	defaultHandler(this.request.responseText);
                 } else { // unhandled error
-                	throw "Error during request for: " + url +
-                    	"with data: " + JSON.stringify(config.data);
+                	throw new Error("Error during request for: " + url +
+                    	" with data: " + JSON.stringify(config.data));
                 }
             }
             if(this.next) {
                 // execute next request
-                this.next.send();
+                this.next.execute();
             }
         }.bind(this);
     };
@@ -278,6 +276,8 @@ var s = (function(s) {
     s.Request.prototype.thereafter = 
     function(nextRequest/*::Request*/)/*::Request*/ {
     	this.next = nextRequest;
+        // store reference to the first request in the chain
+        nextRequest.firstRequest = this.firstRequest;
         return nextRequest;
     }; 
     
@@ -287,13 +287,20 @@ var s = (function(s) {
     };
     
     s.Request.prototype.otherwise = function(callback) {
-    	this.handlers['default'] = callback;
+    	this.defaultHandler = callback;
         return this;
-    }; 
+    };
     
-    s.Request.prototype.send = function()/*::void*/ {
+    s.Request.prototype.execute = function() {
+        this.request.open(this.method, this.url);
+        this.request.setRequestHeader('Content-Type',
+                	'application/x-www-form-urlencoded; charset=UTF-8');
     	this.request.send(this.payload);
     }
+    
+    s.Request.prototype.send = function()/*::void*/ {
+    	this.firstRequest.execute();
+    };
     
     s.Request.prototype.getDefaultHandler = function() {
     	// Search recursively for a defaultHandler
@@ -452,7 +459,7 @@ var s = (function (s) {
     
     s.retrieveData = 
     function (username/*::string*/,
-    		  password/*::string*/)/*::MithrilPromise*/ {
+    		  password/*::string*/)/*::Request*/ {
         return new s.Request({
         	method: "GET",
             url: API_URL('passwords'),
@@ -467,13 +474,10 @@ var s = (function (s) {
     // Additional constants for this functions, so
     // that clients don't have to hardcode status
     // codes.
+    s.retrieveData.OK_STATUS = 200;
     s.retrieveData.AUTHENTIFICATION_FAILED_STATUS = 401;
     s.retrieveData.USERNAME_NOT_FOUND_STATUS = 403;
-    s.retrieveData.no_connection =
-    function(status/*::number*/)/*::boolean*/ {
-    	return status === 404 || status === 0;
-    };
-    
+
 
     // This function reqisters a user on the server
     // (via the endpoin '/register').
@@ -492,6 +496,8 @@ var s = (function (s) {
         });
     
     };
+    
+    s.registerUser.OK_STATUS = 201;
 
     // username: string
     // handlers: {
@@ -509,6 +515,7 @@ var s = (function (s) {
         });
     };
     
+    s.checkForUsername.OK_STATUS = 200;
     s.checkForUsername.USERNAME_USED_STATUS = 409;
 
     // Changes the password for authentification on the server
@@ -531,6 +538,8 @@ var s = (function (s) {
             }
         });      
     };
+    
+    s.changeServerPassword.OK_STATUS = 200;
 
     // data: string    The password list to save
     // callback: function     Executed when the request completes
@@ -548,6 +557,8 @@ var s = (function (s) {
             }
         });
     };
+    
+    s.savePasswordList.OK_STATUS = 201;
 
     return s;
 }(s || {}));

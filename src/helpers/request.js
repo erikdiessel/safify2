@@ -35,22 +35,19 @@ var s = (function(s) {
     	this.next = undefined;
         this.handlers = {};
         this.defaultHandler = undefined;
+        this.firstRequest = this;
+        this.request/*::XMLHttpRequest*/ = undefined;
+        this.method = config.method;
         
-        this.request = new XMLHttpRequest();
-                
         var isGetRequest = config.method.toLowerCase() == "get";
         
         var encodedData = toURLEncoding(config.data);
         
-        var url = config.url + (isGetRequest ? "?" + encodedData : "");
+        this.url = config.url + (isGetRequest ? "?" + encodedData : "");
                                 
         this.payload = isGetRequest ? "" : encodedData;
         
-        this.request.open(config.method, url);
-        
-        this.request.setRequestHeader('Content-Type',
-                	'application/x-www-form-urlencoded; charset=UTF-8');
-        
+        this.request = new XMLHttpRequest();
         
         this.request.onload = function() {
         	if(this.handlers[this.request.status]) {
@@ -58,16 +55,17 @@ var s = (function(s) {
             	this.handlers[this.request.status](this.request.responseText);
             } // there is no specific handler for this status code
             else {
-            	if(this.getDefaultHandler()) {
-                	this.defaultHandler(this.request.responseText);
+            	var defaultHandler = this.getDefaultHandler();
+            	if(defaultHandler) {
+                	defaultHandler(this.request.responseText);
                 } else { // unhandled error
-                	throw "Error during request for: " + url +
-                    	" with data: " + JSON.stringify(config.data);
+                	throw new Error("Error during request for: " + url +
+                    	" with data: " + JSON.stringify(config.data));
                 }
             }
             if(this.next) {
                 // execute next request
-                this.next.send();
+                this.next.execute();
             }
         }.bind(this);
     };
@@ -75,6 +73,8 @@ var s = (function(s) {
     s.Request.prototype.thereafter = 
     function(nextRequest/*::Request*/)/*::Request*/ {
     	this.next = nextRequest;
+        // store reference to the first request in the chain
+        nextRequest.firstRequest = this.firstRequest;
         return nextRequest;
     }; 
     
@@ -84,13 +84,20 @@ var s = (function(s) {
     };
     
     s.Request.prototype.otherwise = function(callback) {
-    	this.handlers['default'] = callback;
+    	this.defaultHandler = callback;
         return this;
-    }; 
+    };
     
-    s.Request.prototype.send = function()/*::void*/ {
+    s.Request.prototype.execute = function() {
+        this.request.open(this.method, this.url);
+        this.request.setRequestHeader('Content-Type',
+                	'application/x-www-form-urlencoded; charset=UTF-8');
     	this.request.send(this.payload);
     }
+    
+    s.Request.prototype.send = function()/*::void*/ {
+    	this.firstRequest.execute();
+    };
     
     s.Request.prototype.getDefaultHandler = function() {
     	// Search recursively for a defaultHandler
