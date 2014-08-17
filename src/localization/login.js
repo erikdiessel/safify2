@@ -1,15 +1,22 @@
 var s = (function(s) {
-	s.login = s.login || {};
+	namespace('s.login');
     
     s.login.l = {
-    	en: {
-        	username: "Username",
-            password: "Password",
-            generator: "Generator",
+      	en: {
+			username: "Username",
+            password: "Master Password",
+            authentificationFailed: "Wrong password or username",
+            login: "Login",
             register: "Register",
-            login: "Login"
-        }
-    }
+            generator: "Generator"
+        },
+		de: {
+
+      	},
+      	fr: {
+
+      	}
+    };
     
     return s;
 }(s || {}));

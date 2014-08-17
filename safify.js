@@ -364,17 +364,24 @@ var s = (function(s) {
     return s;
 }(s || {}));
 var s = (function(s) {
-	s.login = s.login || {};
+	namespace('s.login');
     
     s.login.l = {
-    	en: {
-        	username: "Username",
-            password: "Password",
-            generator: "Generator",
+      	en: {
+			username: "Username",
+            password: "Master Password",
+            authentificationFailed: "Wrong password or username",
+            login: "Login",
             register: "Register",
-            login: "Login"
-        }
-    }
+            generator: "Generator"
+        },
+		de: {
+
+      	},
+      	fr: {
+
+      	}
+    };
     
     return s;
 }(s || {}));
@@ -885,6 +892,27 @@ The user is implemented as a singleton object.
 */
 
 var s = (function(s) {
+	
+    var Subscription = function() {
+    	this.subscriptions = {};
+    }
+    
+    Subscription.prototype.subscribe
+    = function(event/*::string*/, callback)/*::Subscription*/ {
+    	// initialize subscription list, if not already done
+    	this.subscriptions[event] = this.subscriptions[event] || [];
+        this.subscriptions[event].push(callback);
+        return this;
+    }
+    
+    // Notify the subscribers of the event
+    Subscription.prototype.notify
+    = function(event/*::string*/)/*::void*/ {
+    	this.subscriptions[event].forEach(function(callback) {
+        	callback();
+        });
+    }
+	
     // private constructor
     var User = function() {
         this.username = "";
@@ -896,14 +924,22 @@ var s = (function(s) {
         this.username = username;
         this.password = password;
         
-        // TODO: login on server
+        var subscription = new Subscription();
         
-//         s.retrieveData(username, this.serverPassword(), {
-//             onSuccess: this.setPasswordList.bind(this),
-
-
-
-//         });
+		s.retrieveData(this.username, this.serverPassword())
+        .onStatus(s.retrieveData.OK_STATUS, function(data) {
+        	this.entries = s.decrypt(this.username,
+            	this.clientPassword(), data);
+            subscription.notify('logged_in');
+        }).onStatus(s.retrieveData.AUTHENTIFICATION_FAILED_STATUS, function() {
+        	subscription.notify('authentification_failed');
+        }).onStatus(s.retrieveData.USERNAME_NOT_FOUND_STATUS, function() {
+        	subscription.notify('username_not_found');
+        }).otherwise(function() {
+        	subscription.notify('other_error');
+        });
+        
+        return subscription;
     };
     
     User.prototype.serverPassword = function() {
@@ -956,7 +992,7 @@ var s = (function(s) {
     	this.entries.splice(index, 1);
     };
         
-    s.user = User();    
+    s.user = new User();    
     
     return s;
 }(s || {}));
@@ -1156,8 +1192,16 @@ var s = (function(s) {
     	this.username = m.prop("");
         this.password = m.prop("");
         
+        this.wrong_password = m.prop(false);
+        this.wrong_username = m.prop(false);
+        this.no_network = m.prop(false);
+        
         this.login = function() {
-        	s.user.login(this.username, this.password)
+            s.user.login(this.username(), this.password())
+            .subscribe('logged_in', function() { m.route('overview'); })
+            .subscribe('authentification_failed', this.authentificationFailed)
+            .subscribe('username_not_found', this.usernameNotFound)
+            .subscribe('other_error', this.networkError)
         }.bind(this);
         
         // Redirect to the generator page
@@ -1168,9 +1212,35 @@ var s = (function(s) {
         this.toRegistration = function() { m.route('register'); };
     };
     
+    s.login.controller.prototype.resetErrorMessages = function() {
+    	this.wrong_password(false);
+        this.wrong_username(false);
+        this.no_network(false);
+    }
+
+    s.login.controller.prototype.authentificationFailed = function() {
+    	this.resetErrorMessages();
+        this.wrong_password(true);
+    };
+    
+    s.login.controller.prototype.usernameNotFound = function() {
+    	this.resetErrorMessages();
+        this.wrong_username(true);
+    };
+    
+    s.login.controller.prototype.networkError = function() {
+    	this.resetErrorMessages();
+        this.no_network(true);
+    };
+    
+    
     // TODO: augment the markup
     s.login.view = function(ctrl) {
     	return m('div', [
+        	s.errorMessage({
+            	message: ctrl.l.authentificationFailed,
+                visible: ctrl.wrong_password
+            }),
         	s.input({
                 value: ctrl.username,
             	label: ctrl.l.username,
@@ -1309,6 +1379,17 @@ var s = (function(s) {
     return s;
 }(s || {}));
 
+(function() {
+	namespace('s');
+    s.errorMessage = function(config) {
+    	return config.visible() ? 
+            m('span', {
+                'class': 'error_message'
+            }, config.message)
+            :
+            "";
+    };
+}());
 /*
 Header subcomponent
 ===================

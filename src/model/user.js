@@ -12,6 +12,27 @@ The user is implemented as a singleton object.
 */
 
 var s = (function(s) {
+	
+    var Subscription = function() {
+    	this.subscriptions = {};
+    }
+    
+    Subscription.prototype.subscribe
+    = function(event/*::string*/, callback)/*::Subscription*/ {
+    	// initialize subscription list, if not already done
+    	this.subscriptions[event] = this.subscriptions[event] || [];
+        this.subscriptions[event].push(callback);
+        return this;
+    }
+    
+    // Notify the subscribers of the event
+    Subscription.prototype.notify
+    = function(event/*::string*/)/*::void*/ {
+    	this.subscriptions[event].forEach(function(callback) {
+        	callback();
+        });
+    }
+	
     // private constructor
     var User = function() {
         this.username = "";
@@ -23,14 +44,22 @@ var s = (function(s) {
         this.username = username;
         this.password = password;
         
-        // TODO: login on server
+        var subscription = new Subscription();
         
-//         s.retrieveData(username, this.serverPassword(), {
-//             onSuccess: this.setPasswordList.bind(this),
-
-
-
-//         });
+		s.retrieveData(this.username, this.serverPassword())
+        .onStatus(s.retrieveData.OK_STATUS, function(data) {
+        	this.entries = s.decrypt(this.username,
+            	this.clientPassword(), data);
+            subscription.notify('logged_in');
+        }).onStatus(s.retrieveData.AUTHENTIFICATION_FAILED_STATUS, function() {
+        	subscription.notify('authentification_failed');
+        }).onStatus(s.retrieveData.USERNAME_NOT_FOUND_STATUS, function() {
+        	subscription.notify('username_not_found');
+        }).otherwise(function() {
+        	subscription.notify('other_error');
+        });
+        
+        return subscription;
     };
     
     User.prototype.serverPassword = function() {
@@ -83,7 +112,7 @@ var s = (function(s) {
     	this.entries.splice(index, 1);
     };
         
-    s.user = User();    
+    s.user = new User();    
     
     return s;
 }(s || {}));
