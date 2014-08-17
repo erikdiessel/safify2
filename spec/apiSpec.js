@@ -112,11 +112,11 @@ describe("The API interface", function() {
             var secondPassword = "secondPa$$word";
             var data = "some_data";
             
-            registerAndSave(username, password, data)
+            registerAndSave(username, firstPassword, data)
             .thereafter(
             	s.changeServerPassword(username, firstPassword, secondPassword)
             ).onStatus(s.changeServerPassword.OK_STATUS, function(response) {
-            	expect(response).toEqual("Password changed")
+            	expect(response).toEqual("Password successfully changed")
             }).thereafter(s.retrieveData(username, secondPassword))
             // the new password works
             .onStatus(s.retrieveData.OK_STATUS, function(response) {
@@ -131,10 +131,42 @@ describe("The API interface", function() {
                     done();
                 }
             ).otherwise(function(response) {
-            	throw new Error("Error during request with response "
+            	throw new Error("Error during request with response: "
                 	+ response);
                 done();
-            });
+            }).send();
         });
-    })
+    });
+    
+    describe("s.checkForUsername", function() {
+    	it("returns with status 200, if the username is free", function(done) {
+        	// get a username which is not already used
+            var username = randomUsername();
+            s.checkForUsername(username)
+            .onStatus(200, function(response) {
+            	expect(response).toEqual("Username is free");
+                done();
+            }).otherwise(function(response) {
+            	throw new Error("Error during request with response: "
+                	+ response);
+                done();            
+            }).send();
+        });
+        
+        it("returns with status 409 if username is used", function(done) {
+        	var username = randomUsername();
+            var password = "pa$$word";
+            s.registerUser(username, password)
+            .otherwise(function() {/* everything o.k. */})
+            .thereafter(s.checkForUsername(username))
+            .onStatus(s.checkForUsername.USERNAME_USED_STATUS, function(response) {
+            	expect(response).toEqual("Username already used");
+                done();
+            }).otherwise(function(response) {
+            	throw new Error("Error during request with response: "
+                	+ response);
+                done();            
+            }).send();
+        });
+    });
 });

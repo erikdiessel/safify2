@@ -130,7 +130,7 @@ var s = (function (s) {
         });      
     };
     
-    s.changeServerPassword.OK_STATUS = 200;
+    s.changeServerPassword.OK_STATUS = 201;
 
     // data: string    The password list to save
     // callback: function     Executed when the request completes
