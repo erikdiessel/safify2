@@ -31,6 +31,27 @@ var s = (function(s) {
             .subscribe('other_error', this.networkError)
         }.bind(this);
         
+        this.resetErrorMessages = function() {
+            this.wrong_password(false);
+            this.wrong_username(false);
+            this.no_network(false);
+        }.bind(this);
+        
+        this.authentificationFailed = function() {
+            this.resetErrorMessages();
+            this.wrong_password(true);
+        }.bind(this);     
+        
+        this.usernameNotFound = function() {
+            this.resetErrorMessages();
+            this.wrong_username(true);
+        }.bind(this);
+    
+        this.networkError = function() {
+            this.resetErrorMessages();
+            this.no_network(true);
+        }.bind(this);        
+        
         // Redirect to the generator page
         // We pass along undefined, so that no other argument
         // is appended by calling this bounded function
@@ -39,28 +60,7 @@ var s = (function(s) {
         this.toRegistration = function() { m.route('register'); };
     };
     
-    s.login.controller.prototype.resetErrorMessages = function() {
-    	this.wrong_password(false);
-        this.wrong_username(false);
-        this.no_network(false);
-    }
 
-    s.login.controller.prototype.authentificationFailed = function() {
-    	this.resetErrorMessages();
-        this.wrong_password(true);
-    };
-    
-    s.login.controller.prototype.usernameNotFound = function() {
-    	this.resetErrorMessages();
-        this.wrong_username(true);
-    };
-    
-    s.login.controller.prototype.networkError = function() {
-    	this.resetErrorMessages();
-        this.no_network(true);
-    };
-    
-    
     // TODO: augment the markup
     s.login.view = function(ctrl) {
     	return m('div', [

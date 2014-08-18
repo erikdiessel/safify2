@@ -262,7 +262,7 @@ var s = (function(s) {
             	if(defaultHandler) {
                 	defaultHandler(this.request.responseText);
                 } else { // unhandled error
-                	throw new Error("Error during request for: " + url +
+                	throw new Error("Error during request for: " + this.url +
                     	" with data: " + JSON.stringify(config.data));
                 }
             }
@@ -385,6 +385,21 @@ var s = (function(s) {
     
     return s;
 }(s || {}));
+(function() {
+
+namespace('s.pages.register');
+
+s.pages.register.l = {
+	en: {
+    	username: "Username",
+        password: "Password",
+        passwordRepetition: "Password Repetition",
+        register: "Register"
+    }
+}
+
+
+}());
 /*
 Routes
 ======
@@ -408,9 +423,9 @@ setTimeout(function() {
    		"": s.login,
         "overview": s.overview,
         "edit/:entryId": s.edit,
-        "generator": s.generator
+        "generator": s.generator,
         // "autofill":
-        // "register":
+        "register": s.pages.register
     }); 
 });
 
@@ -906,11 +921,12 @@ var s = (function(s) {
     }
     
     // Notify the subscribers of the event
-    Subscription.prototype.notify
-    = function(event/*::string*/)/*::void*/ {
-    	this.subscriptions[event].forEach(function(callback) {
-        	callback();
-        });
+    Subscription.prototype.notify = function(event/*::string*/)/*::void*/ {
+    	if(this.subscriptions[event]) {
+            this.subscriptions[event].forEach(function(callback) {
+                callback();
+            });
+        }
     }
 	
     // private constructor
@@ -937,10 +953,32 @@ var s = (function(s) {
         	subscription.notify('username_not_found');
         }).otherwise(function() {
         	subscription.notify('other_error');
-        });
+        }).send();
         
         return subscription;
     };
+    
+    User.prototype.register = function(username, password) {
+    	this.username = username;
+        this.password = password;
+        
+        var subscription = new Subscription();
+        
+        s.checkForUsername(this.username)
+        .onStatus(s.checkForUsername.USERNAME_USED_STATUS, function() {
+        	subscription.notify('username_used');
+        }).onStatus(s.checkForUsername.OK_STATUS, function() {
+        	// We assume that this works, since the previous API-query
+            // was successfull and happened only some ms ago.
+        	s.registerUser(this.username, this.password)
+            .otherwise(function() { subscription.notify('not_registered') })
+            .send();
+            subscription.notify('registered');
+            
+        }.bind(this)).send();
+        
+        return subscription;
+    }
     
     User.prototype.serverPassword = function() {
     	return s.serverPassword(this.username, this.password);
@@ -1204,6 +1242,27 @@ var s = (function(s) {
             .subscribe('other_error', this.networkError)
         }.bind(this);
         
+        this.resetErrorMessages = function() {
+            this.wrong_password(false);
+            this.wrong_username(false);
+            this.no_network(false);
+        }.bind(this);
+        
+        this.authentificationFailed = function() {
+            this.resetErrorMessages();
+            this.wrong_password(true);
+        }.bind(this);     
+        
+        this.usernameNotFound = function() {
+            this.resetErrorMessages();
+            this.wrong_username(true);
+        }.bind(this);
+    
+        this.networkError = function() {
+            this.resetErrorMessages();
+            this.no_network(true);
+        }.bind(this);        
+        
         // Redirect to the generator page
         // We pass along undefined, so that no other argument
         // is appended by calling this bounded function
@@ -1212,26 +1271,12 @@ var s = (function(s) {
         this.toRegistration = function() { m.route('register'); };
     };
     
-    s.login.controller.prototype.resetErrorMessages = function() {
-    	this.wrong_password(false);
-        this.wrong_username(false);
-        this.no_network(false);
-    }
 
-    s.login.controller.prototype.authentificationFailed = function() {
-    	this.resetErrorMessages();
-        this.wrong_password(true);
-    };
+
+
     
-    s.login.controller.prototype.usernameNotFound = function() {
-    	this.resetErrorMessages();
-        this.wrong_username(true);
-    };
-    
-    s.login.controller.prototype.networkError = function() {
-    	this.resetErrorMessages();
-        this.no_network(true);
-    };
+
+
     
     
     // TODO: augment the markup
@@ -1301,6 +1346,44 @@ var s = (function(s) {
     
     return s;
 }(s || {}));
+(function() {
+	
+namespace('s.pages.register');
+
+s.pages.register.controller = function() {
+	this.l = s.localize(s.pages.register.l);
+    
+    this.username = m.prop("");
+    this.password = m.prop("");
+    
+    this.register = function() {
+    	s.user.register(this.username(), this.password())
+        .subscribe('registered', function() {
+        	m.route('overview');
+        });
+    }.bind(this);
+}
+
+s.pages.register.view = function(ctrl) {
+	return m('div', [
+    	s.input({
+        	value: ctrl.username,
+        	label: ctrl.l.username,
+            type: 'text'
+        }),
+        s.input({
+        	value: ctrl.password,
+            label: ctrl.l.password,
+            type: 'password'
+        }),
+        s.button({
+        	onclick: ctrl.register,
+            label: ctrl.l.register
+        })
+    ]);
+}
+    
+}());
 /*
 Button subcomponent
 ===================
@@ -1394,6 +1477,13 @@ var s = (function(s) {
 Header subcomponent
 ===================
 */
+
+(function() {
+	namespace('s');
+    s.header = function(config) {
+    	return
+    }
+}());
 /*
 Input-field subcomponent
 ========================
@@ -1433,6 +1523,14 @@ var s = (function(s) {
     
     return s;
 }(s || {}));
+(function() {
+	namespace('s');
+
+	s.modal = function(config, contents) {
+    	return m('div.modal', contents);
+    }
+    
+}());
 /*
 Input range subcomponent
 ========================

@@ -21,8 +21,8 @@ setTimeout(function() {
    		"": s.login,
         "overview": s.overview,
         "edit/:entryId": s.edit,
-        "generator": s.generator
+        "generator": s.generator,
         // "autofill":
-        // "register":
+        "register": s.pages.register
     }); 
 });

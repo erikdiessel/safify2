@@ -26,11 +26,12 @@ var s = (function(s) {
     }
     
     // Notify the subscribers of the event
-    Subscription.prototype.notify
-    = function(event/*::string*/)/*::void*/ {
-    	this.subscriptions[event].forEach(function(callback) {
-        	callback();
-        });
+    Subscription.prototype.notify = function(event/*::string*/)/*::void*/ {
+    	if(this.subscriptions[event]) {
+            this.subscriptions[event].forEach(function(callback) {
+                callback();
+            });
+        }
     }
 	
     // private constructor
@@ -57,10 +58,32 @@ var s = (function(s) {
         	subscription.notify('username_not_found');
         }).otherwise(function() {
         	subscription.notify('other_error');
-        });
+        }).send();
         
         return subscription;
     };
+    
+    User.prototype.register = function(username, password) {
+    	this.username = username;
+        this.password = password;
+        
+        var subscription = new Subscription();
+        
+        s.checkForUsername(this.username)
+        .onStatus(s.checkForUsername.USERNAME_USED_STATUS, function() {
+        	subscription.notify('username_used');
+        }).onStatus(s.checkForUsername.OK_STATUS, function() {
+        	// We assume that this works, since the previous API-query
+            // was successfull and happened only some ms ago.
+        	s.registerUser(this.username, this.password)
+            .otherwise(function() { subscription.notify('not_registered') })
+            .send();
+            subscription.notify('registered');
+            
+        }.bind(this)).send();
+        
+        return subscription;
+    }
     
     User.prototype.serverPassword = function() {
     	return s.serverPassword(this.username, this.password);

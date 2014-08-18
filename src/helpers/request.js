@@ -59,7 +59,7 @@ var s = (function(s) {
             	if(defaultHandler) {
                 	defaultHandler(this.request.responseText);
                 } else { // unhandled error
-                	throw new Error("Error during request for: " + url +
+                	throw new Error("Error during request for: " + this.url +
                     	" with data: " + JSON.stringify(config.data));
                 }
             }
