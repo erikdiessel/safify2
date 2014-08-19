@@ -23,3 +23,41 @@ Example usage:
     // export function
     global.namespace = namespace;
 }(this));
+
+
+/* 
+Mediator
+========
+*/
+
+var Mediator = function() {
+	var subscriptions = {}; // private variable
+    
+    /* publishes an event */
+    this.pub = function(event/*::string*/ /*, additional information*/) {
+    	var additionalInformation = Array.prototype.slice.call(arguments, 1);
+        if(subscriptions[event]) {
+            subscriptions[event].forEach(function(func) {
+                func.apply(this, additionalInformation);
+            });
+        }
+    };
+    
+    // subscribe to an event
+    this.on = function(event, callback) {
+    	// initialize subscriptions for the event
+    	subscriptions[event] = subscriptions[event] || [];
+        subscriptions[event].push(callback);
+    };
+};
+
+var _md = undefined;
+
+// Mediator singleton
+var md = function() {
+	if(_md) {
+    	return _md;
+    } else {
+    	return _md = new Mediator();
+    }
+}

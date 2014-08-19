@@ -19,7 +19,7 @@ var s = (function(s) {
         this.entry = user.entries.getEntry(this.entryId);
         
         this.saveEntry = function() {
-        	user.entries.setEntry(this.entryId, entry);
+        	md().pub('changeEntry', this.entryId, this.entry);
          	m.route('overview');   
         }
         

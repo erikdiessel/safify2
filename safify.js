@@ -1272,13 +1272,6 @@ var s = (function(s) {
     };
     
 
-
-
-    
-
-
-    
-    
     // TODO: augment the markup
     s.login.view = function(ctrl) {
     	return m('div', [

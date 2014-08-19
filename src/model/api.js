@@ -59,7 +59,6 @@ var s = (function (s) {
             	"password": password
             }
         });
-
     };
     
     // Additional constants for this functions, so
