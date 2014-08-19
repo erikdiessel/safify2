@@ -10,28 +10,36 @@ module.exports = function(config) {
 
     // frameworks to use
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
-    frameworks: ['jasmine'],
+    frameworks: ['jasmine', 'requirejs'],
 
 
     // list of files / patterns to load in the browser
     files: [
-      'bower_components/mithril/mithril.js',
-      'bower_components/sjcl/sjcl.js',
-      'framework.js',
-      'safify.js',
-      'spec/*.js'
+      //{ pattern: 'bower_components/mithril/mithril.js', included: false },
+      //{ pattern: 'bower_components/sjcl/sjcl.js', included: false },
+      //{ pattern: 'framework.js', included: false },
+      //{ pattern: 'src/**/*.js', included: false },
+      //{ pattern: 'spec/*.js', included: false },
+      { pattern: 'spec/helpers.autofillSpec.js', included: false },
+      { pattern: 'spec/generatorSpec.js', included: false },
+      //{ pattern: 'src/helpers/autofill.js', included: false },
+      //{ pattern: 'src/model/generator.js', included: false },
+      { pattern: 'src/**/*.js', included: false },
+      
+      'spec/test-main.js'
     ],
 
 
     // list of files to exclude
     exclude: [
+    	'src/main/main.js'
     ],
 
 
     // preprocess matching files before serving them to the browser
     // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
     preprocessors: {
-        'safify.js': ['coverage'],
+        'src/**/*.js': ['coverage'],
         'framework.js': ['coverage']
     },
 

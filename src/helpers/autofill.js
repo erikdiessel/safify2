@@ -8,9 +8,9 @@ It contains a function which autofills and
 autosubmits a given form.
 */
 
-(function() {
+define(function() {
 	
-namespace('s.helpers');
+//namespace('s.helpers');
 
 
 // Converts a given html-string into the element represented
@@ -59,10 +59,8 @@ function(form/*::HTMLElement*/, siteOrigin/*::string*/)/*::void*/ {
         	form.action.substring(document.location.origin.length);
     }
 };
-
-
-s.helpers.filledForm = 
-function(formHTML/*::string*/, siteOrigin/*::string*/,
+ 
+return function(formHTML/*::string*/, siteOrigin/*::string*/,
 	     username/*::string*/, password/*::string*/)/*::HTMLElement*/ {
 	var form = htmlToElement(formHTML);
     var usernameInput = getUsernameInput(form);
@@ -77,4 +75,4 @@ function(formHTML/*::string*/, siteOrigin/*::string*/,
 
 
 
-}());
+});

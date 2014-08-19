@@ -8,8 +8,7 @@ a certain length and the allowed
 characters.
 */
 
-
-var s = (function(s) {
+define(function() {
     
 	var LETTERS = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
                    "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
@@ -25,7 +24,7 @@ var s = (function(s) {
     // Returns a random password with the specified length and
     // characters included. It does not guarantee that all 
     // types of characters are included. 
-    s.generatePassword = function(length, uppercase, numbers, specialchars) {
+    return function(length, uppercase, numbers, specialchars) {
         // specify the characters which can be included in 
         // the generated passwords
         var allowedCharacters = LETTERS.concat(
@@ -60,7 +59,6 @@ var s = (function(s) {
         	return allowedCharacters[randomIndex(allowedCharacters.length)];    
         }).join('');
     };
-    
-    
-    return s;
-}(s || {}));
+
+
+});

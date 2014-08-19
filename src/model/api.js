@@ -89,7 +89,7 @@ var s = (function (s) {
             	"username": username,
                 "password": password
             }
-        }).onStatus(201, md().publishing('loggedIn')
+        }).onStatus(201, md().publishing('loggedIn'))
         .onStatus(409, md().publishing('usernameUsed'));
     };
     

@@ -1,8 +1,8 @@
 (function() {
 
 // TODO: adapt to AMD
-l = s.localize(s.errorMessages);
-
+//l = s.localize(s.errorMessages);
+/*
 var messages = {
 	'authentificationFailed': l.authentificationFailed,
     'usernameUsed': l.usernameUsed,
@@ -10,6 +10,7 @@ var messages = {
     // reset message if this happens
     'transitioned': ""
 };
+*/
 
 var message = "";
 
