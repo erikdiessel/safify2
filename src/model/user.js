@@ -14,8 +14,8 @@ The user is implemented as a singleton object.
 
 (function() {
 	
-var username = undefined;
-var password = undefined;
+var _username = undefined;
+var _password = undefined;
 var entries = [];
 
 function save() {
@@ -27,13 +27,15 @@ function save() {
 }
 
 md().on('login', function(username, password) {
-	var serverPassword = s.serverPassword(username, password);
+	_username = username; _password = password;
+	var serverPassword = s.serverPassword(_username, _password);
 	s.retrieveData(username, serverPassword);
 });
 
 md().on('register', function(username, password) {
-	var serverPassword = s.serverPassword(username, password);
-    s.registerUser(username, serverPassword);
+	_username = username; _password = password;
+	var serverPassword = s.serverPassword(_username, _password);
+    s.registerUser(_username, serverPassword);
 });
 
 md().on('createEntry', function(entry) {
@@ -49,6 +51,13 @@ md().on('deleteEntry', function(index) {
 md().on('changeEntry', function(index, newEntry) {
 	entries[index] = newEntry;
     save();
+});
+
+md().on('dataReceived', function(data) {
+	// decrypt data
+    var decrypted = s.decrypt(_username, _password, data);
+    entries = JSON.parse(decrypted);
+    md().pub('loggedIn');
 });
     
 }());

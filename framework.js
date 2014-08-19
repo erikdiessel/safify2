@@ -43,6 +43,15 @@ var Mediator = function() {
         }
     };
     
+    // Currying of *pub* for use as a callback
+    this.publishing = function(/*arguments*/) {
+    	// store for use in returned function
+    	var myArguments = arguments;
+    	return function() {
+        	this.pub.apply(this, myArguments);
+        }.bind(this);
+    }.bind(this);
+    
     // subscribe to an event
     this.on = function(event, callback) {
     	// initialize subscriptions for the event

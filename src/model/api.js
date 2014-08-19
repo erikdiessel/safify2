@@ -58,6 +58,12 @@ var s = (function (s) {
             	"username": username,
             	"password": password
             }
+        }).onStatus(200, function(response) {
+        	m().pub('dataReceived', response)
+        }).onStatus(401, function() {
+        	m().pub('authentificationFailed');
+        }).onStatus(403, function() {
+        	m().pub('usernameNotFound');
         });
     };
     
@@ -83,8 +89,8 @@ var s = (function (s) {
             	"username": username,
                 "password": password
             }
-        });
-    
+        }).onStatus(201, md().publishing('loggedIn')
+        .onStatus(409, md().publishing('usernameUsed'));
     };
     
     s.registerUser.OK_STATUS = 201;
@@ -94,6 +100,7 @@ var s = (function (s) {
     // onUsernameFree: function
     // onUsernameUsed: function
     // }
+    // DEPRECATED !
     s.checkForUsername = 
     function (username/*::string*/)/*::MithrilPromise*/ {
     	return new s.Request({
