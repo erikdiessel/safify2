@@ -21,19 +21,18 @@ interface InputOptions {
 }
 */
 
-var s = (function(s) {
-	s.input = 
-    function(config/*::InputOptions*/) /*::MithrilVirtualElement*/ {
-    	return m('label', [
-        	m('input', {
-            	type: config.type,
-                value: config.value(),
-                onchange: m.withAttr('value', config.value),
-                placeholder: config.label
-            }),
-            config.label
-        ]);
-    };
+define(['../vendor/mithril'], function(m) {
+
+return function(config/*::InputOptions*/) /*::MithrilVirtualElement*/ {
+    return m('label', [
+        m('input', {
+            type: config.type,
+            value: config.value(),
+            onchange: m.withAttr('value', config.value),
+            placeholder: config.label
+        }),
+        config.label
+    ]);
+};
     
-    return s;
-}(s || {}));
+});

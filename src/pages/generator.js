@@ -16,74 +16,79 @@ criteria). Additionally the generated password can be
 used directly as the password for a new entry.
 */
 
-var s = (function(s) {
-    s.generator = s.generator || {};
+define(function(require) {
+
+var m    = require('../vendor/mithril'),
+range    = require('../subcomponents/range'),
+button   = require('../subcomponents/button'),
+checkbox = require('../subcomponents/checkbox'),
+generatePassword = require('../model/generator');
+
     
-    s.generator.controller = function() {
-        // localization
-        this.l = s.localize(s.generator.l);
-        
-        this.length = m.prop(6);
-        this.useUppercase = m.prop(true);
-        this.useNumbers = m.prop(true);
-        this.useSpecialCharacters = m.prop(false);
- 		
-        // private data store;
-        // this prevents recomputation of the
-        // password when the user wants to create an
-        // entry with this password;
-        var password;
-       
-        this.password = function() {
-            // return the password and store it in
-            // the private attribute *password*
-            return password = s.generatePassword(
-            	this.length(),
-                this.useUppercase(),
-                this.useNumbers(),
-                this.useSpecialCharacters()
-            );
-        };
-        
-        this.checkboxControllers = [
-            { label: this.l.uppercase, checked: this.useUppercase },
-            { label: this.l.numbers,   checked: this.useNumbers	  },
-            { label: this.l.special_characters, 
-              checked: this.useSpecialCharacters
-            }
-        ].map(function(setting) {
-        	return new s.checkbox.controller(setting);   
-        });
-        
-        this.lengthController = new s.range.controller({
-            value: this.length,
+s.generator.controller = function() {
+    // localization
+    this.l = s.localize(s.generator.l);
+
+    this.length = m.prop(6);
+    this.useUppercase = m.prop(true);
+    this.useNumbers = m.prop(true);
+    this.useSpecialCharacters = m.prop(false);
+
+    // private data store;
+    // this prevents recomputation of the
+    // password when the user wants to create an
+    // entry with this password;
+    var password;
+
+    this.password = function() {
+        // return the password and store it in
+        // the private attribute *password*
+        return password = generatePassword(
+            this.length(),
+            this.useUppercase(),
+            this.useNumbers(),
+            this.useSpecialCharacters()
+        );
+    };
+
+    this.checkboxControllers = [
+        { label: this.l.uppercase, checked: this.useUppercase },
+        { label: this.l.numbers,   checked: this.useNumbers	  },
+        { label: this.l.special_characters, 
+          checked: this.useSpecialCharacters
+        }
+    ].map(function(setting) {
+        return new s.checkbox.controller(setting);   
+    });
+
+    this.lengthController = new s.range.controller();
+
+    /* Creates an entry with the current generated
+       password.
+    */
+    this.createEntryWithPassword = function() {
+        // TODO
+    }
+};
+
+s.generator.view = function(ctrl) {
+    return m("div", [
+        m("span", ctrl.password()),
+        s.range.view({
+            value: ctrl.length,
             min: 4,
             max: 16,
-            label: this.l.length
-        });
-        
-        /* Creates an entry with the current generated
-           password.
-		*/
-        this.createEntryWithPassword = function() {
-            // TODO
-        }
-    };
-    
-    s.generator.view = function(ctrl) {
-    	return m("div", [
-            m("span", ctrl.password()),
-			s.range.view(ctrl.lengthController),
-            ctrl.checkboxControllers.map(function(ctrl) {
-                return s.checkbox.view(ctrl);
-            }),
-            s.button({
-                onclick: ctrl.createEntryWithPassword,
-                label: ctrl.l.create_entry_with_generated_password
-            })
-        ]);    
-    };
-    
-    
-    return s;
-}(s || {}));
+            label: ctrl.l.length
+        }),
+        checkbox({ label: ctrl.l.uppercase, checked: ctrl.useUppercase }),
+        checkbox({ label: ctrl.l.numbers, checked: ctrl.useNumbers }),
+        checkbox({ label: ctrl.l.special_characters, 
+          checked: ctrl.useSpecialCharacters
+        }),
+        s.button({
+            onclick: ctrl.createEntryWithPassword,
+            label: ctrl.l.create_entry_with_generated_password
+        })
+    ]);    
+};
+});

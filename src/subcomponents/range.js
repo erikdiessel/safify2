@@ -9,20 +9,15 @@ together with a display of the current value.
 
 /// <reference path="../vendor/mithril.d.ts" />
 
-var s = (function(s) {
-    s.range = {};
-    
+define(['../vendor/mithril'], function(m) {
+
     // config: {
     // 	   label: string,
     //	   value: m.prop,
     //     min:   int,
     //     max:   int
-	// }
-    s.range.controller = function(config) {
-        s.copy(this, config);
-    }
-    
-    s.range.view = function(ctrl) {
+	// }    
+    return function(config) {
     	return m("label", [
             m("input[type=range].topcoat-range", {
                 min: ctrl.min,
@@ -33,6 +28,4 @@ var s = (function(s) {
             ctrl.label
         ]);
     };
-    
-    return s;
-}(s || {}));
+});
