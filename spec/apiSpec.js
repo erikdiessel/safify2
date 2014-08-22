@@ -3,12 +3,19 @@ Spec for the API interface (api.js)
 ===================================
 */
 
+define(['src/model/api', 'src/framework/mediator'],
+       function(api, md) {
+
 describe("The API interface", function() {
     beforeEach(function() {
         // use integration database, so that we don't
         // pollute the production database with test fixtures
-        s.API_BASE_URL =
-            "https://safify-api-integration.herokuapp.com/";
+        api.set_API_BASE_URL(
+            "https://safify-api-integration.herokuapp.com/"
+        );
+        // reset the subscriptions before each test, so
+        // that there is no interference
+        md().reset();
     });
     
     // helpers
@@ -20,88 +27,81 @@ describe("The API interface", function() {
     };
     
     var registerAndSave = function(username, password, data) {
-        return s.registerUser(username, password)
-        .otherwise(function() {/* everything o.k. */})
-        .thereafter(s.savePasswordList(username, password, data))
-        .otherwise(function() { /* everything o.k. */});
+        api.registerUser(username, password)
+        md().on('loggedIn', function() {
+        	api.savePasswordList(username, password, data);
+        });
     };
 
-    describe("s.registerUser", function() {
+    describe("registerUser", function() {
     	it("allows registering", function(done) {
         	var username = randomUsername();
         	var password = "pa$$word";
             
-			s.registerUser(username, password)
-            .onStatus(s.registerUser.OK_STATUS, function(data) {
-            	expect(data).toEqual("Successfully registered");
-                //done();
-            }).thereafter(s.retrieveData(username, password))
-            .onStatus(s.retrieveData.OK_STATUS, function(response) {
+			api.registerUser(username, password);
+            // Now check if registering worked
+            md().on('loggedIn', function() {
+            	api.retrieveData(username, password)
+            });
+			md().on('dataReceived', function(response) {
             	expect(response).toEqual("{}");
                 done();
-            }).otherwise(function(response) {
-            	throw new Error("Error during the request, "
-                	+ "with response: " + response);
-                done();
-            }).send();
+            })
+        });
+        
+        it("publishes 'usernameUsed' if the username is in use", function(done) {
+        	var username = randomUsername();
+            var password = "pa$$word";
+            
+            api.registerUser(username, password);
+            md().on('loggedIn', function() {
+            	// try it a second time
+            	api.registerUser(username, password);
+            })
+            md().on('usernameUsed', done);
         });
     });
     
-    describe("registerAndSave", function() {
+    describe("the test helper registerAndSave", function() {
     	it("registers a user and then saves data", function(done) {
        		 var username = randomUsername();
              var password = "pa$$word";
              var data = "some important data"
              
              registerAndSave(username, password, data)
-             .onStatus(s.savePasswordList.OK_STATUS, function(response) {
-             	expect(response).toEqual("Successfully updated");
-                done();
-             }).otherwise(function(response) {
-             	throw new Error("Error doing the request,"
-                	+ " response: " + response);
-             }).send();
+			 md().on('saved', done);
         });
     });
     
-    describe("s.savePasswordList", function() {
+    describe("savePasswordList", function() {
         it("allows to save data permanently", function(done) {
             var username = randomUsername();
         	var password = "pa$$word";
         	var data1 = "data1";
         
-            registerAndSave(username, password, data1)
-            .thereafter(s.retrieveData(username, password))
-            .onStatus(s.retrieveData.OK_STATUS, function(response) {
+            registerAndSave(username, password, data1)          
+            md().on('saved', function() {
+            	api.retrieveData(username, password)
+            });            
+            md().on('dataReceived', function(response) {
             	expect(response).toEqual(data1);
                 done();
-            }).otherwise(function(response) {
-            	throw new Error("Error during request, " 
-                	+ " with response: " + response);
-                done();
-            }).send();
-        });
-        
-
+            });
+        });        
     });
     
-    describe("s.retrieveData", function() {
-        
-        it("executes error handler if password wrong", function(done) {
+    describe("retrieveData", function() {
+        it("publishes 'authentificationFailed' if password wrong",
+        function(done) {
             var username = randomUsername();
             var password = "pas$$word";
             var data = "data";
             
             registerAndSave(username, password, data)
-            .thereafter(s.retrieveData(username, "wrong_password"))
-            .onStatus(s.retrieveData.AUTHENTIFICATION_FAILED_STATUS,
-            function(response) {
-            	expect(response).toEqual("Authentification failed");
-                done();
-            }).otherwise(function() {
-            	throw new Error("Error during request");
-                done();
-            }).send();
+            md().on('saved', function() {
+            	api.retrieveData(username, "wrong_password");
+            });
+            md().on('authentificationFailed', done);
         });        
     });
     
@@ -113,60 +113,21 @@ describe("The API interface", function() {
             var data = "some_data";
             
             registerAndSave(username, firstPassword, data)
-            .thereafter(
-            	s.changeServerPassword(username, firstPassword, secondPassword)
-            ).onStatus(s.changeServerPassword.OK_STATUS, function(response) {
-            	expect(response).toEqual("Password successfully changed")
-            }).thereafter(s.retrieveData(username, secondPassword))
+            md().on('saved', function() {
+            	api.changeServerPassword(username,
+                	firstPassword, secondPassword);
+            });
+            md().on('passwordSaved', function() {
+            	api.retrieveData(username, secondPassword);
+            });
             // the new password works
-            .onStatus(s.retrieveData.OK_STATUS, function(response) {
+            md().on('dataReceived', function(response) {
             	expect(response).toEqual(data);
+                api.retrieveData(username, firstPassword);
             })
             // but the old password doesn't work
-            .thereafter(s.retrieveData(username, firstPassword))
-            .onStatus(
-            	s.retrieveData.AUTHENTIFICATION_FAILED_STATUS,
-                function(response) {
-                	expect(response).toEqual("Authentification failed")
-                    done();
-                }
-            ).otherwise(function(response) {
-            	throw new Error("Error during request with response: "
-                	+ response);
-                done();
-            }).send();
+            md().on('authentificationFailed', done);
         });
     });
-    
-    describe("s.checkForUsername", function() {
-    	it("returns with status 200, if the username is free", function(done) {
-        	// get a username which is not already used
-            var username = randomUsername();
-            s.checkForUsername(username)
-            .onStatus(200, function(response) {
-            	expect(response).toEqual("Username is free");
-                done();
-            }).otherwise(function(response) {
-            	throw new Error("Error during request with response: "
-                	+ response);
-                done();            
-            }).send();
-        });
-        
-        it("returns with status 409 if username is used", function(done) {
-        	var username = randomUsername();
-            var password = "pa$$word";
-            s.registerUser(username, password)
-            .otherwise(function() {/* everything o.k. */})
-            .thereafter(s.checkForUsername(username))
-            .onStatus(s.checkForUsername.USERNAME_USED_STATUS, function(response) {
-            	expect(response).toEqual("Username already used");
-                done();
-            }).otherwise(function(response) {
-            	throw new Error("Error during request with response: "
-                	+ response);
-                done();            
-            }).send();
-        });
-    });
+});
 });

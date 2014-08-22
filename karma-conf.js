@@ -20,11 +20,13 @@ module.exports = function(config) {
       //{ pattern: 'framework.js', included: false },
       //{ pattern: 'src/**/*.js', included: false },
       //{ pattern: 'spec/*.js', included: false },
-      { pattern: 'spec/helpers.autofillSpec.js', included: false },
+      /*{ pattern: 'spec/helpers.autofillSpec.js', included: false },
       { pattern: 'spec/generatorSpec.js', included: false },
       { pattern: 'spec/passwordSpec.js', included: false },
       { pattern: 'spec/encryptionSpec.js', included: false },
-      { pattern: 'spec/mediatorSpec.js', included: false },
+      { pattern: 'spec/mediatorSpec.js', included: false }, */
+      { pattern: 'spec/*Spec.js', included: false },
+      
       //{ pattern: 'src/helpers/autofill.js', included: false },
       //{ pattern: 'src/model/generator.js', included: false },
       { pattern: 'src/**/*.js', included: false },

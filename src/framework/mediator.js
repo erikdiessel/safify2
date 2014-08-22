@@ -36,6 +36,11 @@ var Mediator = function() {
     	subscriptions[event] = subscriptions[event] || [];
         subscriptions[event].push(callback);
     };
+    
+    // Reset to original state
+    this.reset = function() {
+    	subscriptions = {};
+    };
 };
 
 var _md = undefined;

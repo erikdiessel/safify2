@@ -11,19 +11,23 @@ of performance reasons (increased code size).
 
 /// <reference path="../helpers/request.js" />
 
-var s = (function (s) {
-    // exposed as public constant, so that it can
+define(['../framework/mediator', '../helpers/request'],
+       function(md, Request) {
+
+    // exposed with a public setter, so that it can
     // be mocked for tests
-    s.API_BASE_URL = "https://safify-api.herokuapp.com/";
+    var API_BASE_URL = "https://safify-api.herokuapp.com/";
+    
+    function set_API_BASE_URL(url/*::string*/) {
+    	API_BASE_URL = url;
+    }
 
     // This private function returns the url for
     // a specific path of the API
     var API_URL = function (path/*::string*/)/*::string*/ {
         // important: use https:// protocol
-        return s.API_BASE_URL + path;
+        return API_BASE_URL + path;
     };
-
-
 
     /*~
     For ajax-requests we intentionally don't use the
@@ -33,25 +37,11 @@ var s = (function (s) {
     XMLHttpRequest-object which makes this approach
     also portable to other frameworks.
     */
-    // This function makes an AJAX-request to fetch the
-    // password data.
-    // username: string
-    // password: string   The server password
-    // handlers: {
-    // 		onAuthentificationFailed: function
-    //		onUsernameNotFound: function,
-    //		onNoConnection: function
-    // }
-    // returns: promise which is resolved when success,
-    // and passed the response data
-    // The respective functions in handlers are called
-    // when the AJAX-request returns such a success / error.
     // The function uses the API endpoint '/passwords'.
     
-    s.retrieveData = 
-    function (username/*::string*/,
+    function retrieveData(username/*::string*/,
     		  password/*::string*/)/*::Request*/ {
-        return new s.Request({
+        return new Request({
         	method: "GET",
             url: API_URL('passwords'),
             data: {
@@ -59,30 +49,16 @@ var s = (function (s) {
             	"password": password
             }
         }).onStatus(200, function(response) {
-        	m().pub('dataReceived', response)
-        }).onStatus(401, function() {
-        	m().pub('authentificationFailed');
-        }).onStatus(403, function() {
-        	m().pub('usernameNotFound');
-        });
+        	md().pub('dataReceived', response)
+        }).onStatus(401, md().publishing('authentificationFailed'))
+        .onStatus(403, md().publishing('usernameNotFound'));
     };
     
-    // Additional constants for this functions, so
-    // that clients don't have to hardcode status
-    // codes.
-    s.retrieveData.OK_STATUS = 200;
-    s.retrieveData.AUTHENTIFICATION_FAILED_STATUS = 401;
-    s.retrieveData.USERNAME_NOT_FOUND_STATUS = 403;
-
-
     // This function reqisters a user on the server
     // (via the endpoin '/register').
-    // It should *only* be called after an API-call
-    // to check whether the username is already used
-    // (via s.checkUsernameUsed).
-    s.registerUser = function (username/*::string*/,
-    						   password/*::string*/)/*::MithrilPromise*/ {
-    	return new s.Request({
+    function registerUser(username/*::string*/,
+    				      password/*::string*/)/*::Request*/ {
+    	return new Request({
         	method: "POST",
             url: API_URL("register"),
             data: {
@@ -90,30 +66,9 @@ var s = (function (s) {
                 "password": password
             }
         }).onStatus(201, md().publishing('loggedIn'))
-        .onStatus(409, md().publishing('usernameUsed'));
+        .onStatus(409, md().publishing('usernameUsed'))
+        .otherwise(md().publishing('networkError'));
     };
-    
-    s.registerUser.OK_STATUS = 201;
-
-    // username: string
-    // handlers: {
-    // onUsernameFree: function
-    // onUsernameUsed: function
-    // }
-    // DEPRECATED !
-    s.checkForUsername = 
-    function (username/*::string*/)/*::MithrilPromise*/ {
-    	return new s.Request({
-        	method: "GET",
-            url: API_URL("username_not_used"),
-            data: {
-            	'username': username
-            }
-        });
-    };
-    
-    s.checkForUsername.OK_STATUS = 200;
-    s.checkForUsername.USERNAME_USED_STATUS = 409;
 
     // Changes the password for authentification on the server
     // to a new one.
@@ -121,11 +76,10 @@ var s = (function (s) {
     // oldPassword: string   password used before
     // newPassword: string
     // callback: function    triggered when the request completes
-    s.changeServerPassword =
-    function (username/*::string*/,  oldPassword/*::string*/,
+    function changeServerPassword(username/*::string*/,  oldPassword/*::string*/,
               newPassword/*::string*/)/*::MithrilPromise*/ {
               
-        return new s.Request({
+        return new Request({
         	method: 'POST',
             url: API_URL('change_password'),
             data: {
@@ -133,18 +87,14 @@ var s = (function (s) {
                 'password': oldPassword,
                 'new_password': newPassword
             }
-        });      
+        }).onStatus(201, md().publishing('passwordSaved'))
+        .otherwise(md().publishing('networkError'));      
     };
     
-    s.changeServerPassword.OK_STATUS = 201;
-
-    // data: string    The password list to save
-    // callback: function     Executed when the request completes
-    s.savePasswordList =
-    function (username/*::string*/, password/*::string*/,
+    function savePasswordList(username/*::string*/, password/*::string*/,
     		  data/*::string*/)/*::MithrilPromise*/ { 
               
-        return new s.Request({
+        return new Request({
         	method: 'POST',
             url: API_URL('passwords'),
             data: {
@@ -152,10 +102,15 @@ var s = (function (s) {
                 'password': password,
                 'password_list': data
             }
-        });
+        }).onStatus(201, md().publishing('saved'))
+        .otherwise(md().publishing('networkError'));
     };
-    
-    s.savePasswordList.OK_STATUS = 201;
 
-    return s;
-}(s || {}));
+	return {
+    	set_API_BASE_URL: set_API_BASE_URL,
+        retrieveData: retrieveData,
+        registerUser: registerUser,
+        changeServerPassword: changeServerPassword,
+        savePasswordList: savePasswordList
+    };
+});
