@@ -24,8 +24,8 @@ button   = require('../subcomponents/button'),
 checkbox = require('../subcomponents/checkbox'),
 generatePassword = require('../model/generator');
 
-    
-s.generator.controller = function() {
+
+function controller() {
     // localization
     this.l = s.localize(s.generator.l);
 
@@ -71,7 +71,7 @@ s.generator.controller = function() {
     }
 };
 
-s.generator.view = function(ctrl) {
+function view(ctrl) {
     return m("div", [
         m("span", ctrl.password()),
         s.range.view({
@@ -91,4 +91,10 @@ s.generator.view = function(ctrl) {
         })
     ]);    
 };
+
+return {
+	controller: controller,
+    view: view
+};
+
 });
