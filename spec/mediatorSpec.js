@@ -1,4 +1,4 @@
-
+define(['src/framework/mediator'], function(md) {
 
 describe("Mediator", function() {
 	it("notifies other components about the event", function() {
@@ -37,4 +37,6 @@ describe("Mediator", function() {
         md().pub('attacked');
         expect(loadWeapons).toHaveBeenCalled();
     });
+});
+
 });

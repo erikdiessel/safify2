@@ -1,10 +1,12 @@
+define(['src/model/security'], function(security) {
+
 describe("The password computation", function() {
     
     describe("The client password", function() {
         it("has the same values as version 1 of safify", function() {
             var username = "user77";
             var password = "pa$$word77"
-            var computed = s.clientPassword(username, password);
+            var computed = security.clientPassword(username, password);
 
             expect(computed).toEqual(JSON.stringify([
                 // test vector from the old safify
@@ -16,10 +18,10 @@ describe("The password computation", function() {
         it("is only computed once and then stored", function() {
             var username = "user77";
             var password = "pa$$word77"
-            var computed = s.clientPassword(username, password);
+            var computed = security.clientPassword(username, password);
             for(var i=0; i<100; i++) {
                 // should be now really fast
-                var computed2 = s.clientPassword(username, password);
+                var computed2 = security.clientPassword(username, password);
                 expect(computed2).toEqual(computed);
             };
         });
@@ -29,7 +31,7 @@ describe("The password computation", function() {
         it("has the same values as version 1 of safify", function() {
             var username = "user77";
             var password = "pa$$word77"
-            var computed = s.serverPassword(username, password);
+            var computed = security.serverPassword(username, password);
 
             expect(computed).toEqual(JSON.stringify([
                 // test vector from the old safify
@@ -41,13 +43,15 @@ describe("The password computation", function() {
        it("is only computed once and then stored", function() {
             var username = "user77";
             var password = "pa$$word77"
-            var computed = s.serverPassword(username, password);
+            var computed = security.serverPassword(username, password);
             for(var i=0; i<100; i++) {
                 // should be now really fast
-                var computed2 = s.serverPassword(username, password);
+                var computed2 = security.serverPassword(username, password);
                 expect(computed2).toEqual(computed);
             };
         });
         
     })
+});
+
 });

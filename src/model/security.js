@@ -25,7 +25,7 @@ is not directly available in javascript).
 
 /// <reference path="../vendor/sjcl.d.ts" />
 
-var s = (function(s) {
+define(['../vendor/sjcl'], function(sjcl) {
     
     /*
     Converts the given *password* string
@@ -48,22 +48,22 @@ var s = (function(s) {
     is already in memory and even more important.
     */
     
-    var clientPassword;
+    var clientPasswordMemo;
     // We have to check if username or password have
     // changed, in this case, the client password
     // *has* to be recomputed.
     var oldUsername;
     var oldPassword;
     
-    s.clientPassword = function(username/*::string*/,
+    function clientPassword(username/*::string*/,
     							password/*::string*/)/*::string*/ {
         
         // When the value is already computed, (with
         // the same username and password), return
         // it immediately and stop the computation.
-        if (clientPassword && username === oldUsername &&
+        if (clientPasswordMemo && username === oldUsername &&
             password === oldPassword) {
-            return clientPassword;
+            return clientPasswordMemo;
         }
         
         // store for next function call
@@ -116,11 +116,9 @@ var s = (function(s) {
         
         // Store the computed password for subsequent
         // function calls.
-        clientPassword = JSON.stringify(
+        return clientPasswordMemo = JSON.stringify(
             sjcl.misc.pbkdf2(password, salt, iterations)
         );
-        
-        return clientPassword;
     };
     
     /*
@@ -146,16 +144,16 @@ var s = (function(s) {
     */
     
     // Again, store for subsequent function calls
-    var serverPassword;
+    var serverPasswordMemo;
     var oldUsername;
     var oldPassword;
     
     
-    s.serverPassword = function(username/*::string*/,
+   function serverPassword(username/*::string*/,
     							password/*::string*/)/*::string*/ {
-        if(serverPassword && username == oldUsername
+        if(serverPasswordMemo && username == oldUsername
            && password == oldPassword) {
-            return serverPassword;
+            return serverPasswordMemo;
         }
         
         // store for next function call
@@ -172,12 +170,11 @@ var s = (function(s) {
         // generation of those two passwords.
         var iterations = 2347;
                     
- 		serverPassword = JSON.stringify(
+ 		return serverPasswordMemo = JSON.stringify(
         	sjcl.misc.pbkdf2(password, salt, iterations)
       	);
-        
-        return serverPassword;
     };
+    
     
     
     /*
@@ -192,21 +189,25 @@ var s = (function(s) {
     vector, so that they can be used standalone
     */
     
-    s.encrypt = function(username/*::string*/,
+    function encrypt(username/*::string*/,
                          password/*::string*/,
                          data/*::string*/)/*::sjcl.SjclCipherEncrypted*/ {
-        var key = s.clientPassword(username, password);
+        var key = clientPassword(username, password);
         return sjcl.encrypt(key, data);
     };
     
-    s.decrypt = function(username/*::string*/,
+    function decrypt(username/*::string*/,
                          password/*::string*/,
                          data/*::sjcl.SjclCipherEncrypted*/)/*::string*/ {
-    	var key = s.clientPassword(username, password);
+    	var key = clientPassword(username, password);
         return sjcl.decrypt(key, data);
     };
-   
     
+    return {
+    	serverPassword: serverPassword,
+        clientPassword: clientPassword,
+        encrypt: encrypt,
+        decrypt: decrypt
+    };
     
-    return s;
-}(s || {}));
+});
