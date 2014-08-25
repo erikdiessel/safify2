@@ -16,13 +16,24 @@ so that it is placed at the end of the execution
 queue.
 */
 
+define(function(require) {
+
+var m = require('../vendor/mithril'),
+login = require('../pages/login'),
+edit  = require('../pages/edit'),
+generator = require('../pages/generator'),
+overview  = require('../pages/overview'),
+register  = require('../pages/register');
+
 setTimeout(function() {
     m.route(document.body, "", {
-   		"": s.login,
-        "overview": s.overview,
-        "edit/:entryId": s.edit,
-        "generator": s.generator,
+   		"": login,
+        "overview":overview,
+        "edit/:entryId": edit,
+        "generator": generator,
         // "autofill":
-        "register": s.pages.register
+        "register": register
     }); 
+});
+
 });

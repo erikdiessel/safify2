@@ -11,20 +11,26 @@ the corresponding actions to edit and show an entry.
 /// <reference path="../model/user.js" />
 /// <reference path="../components/entry.js" />
 
-var s = (function(s) {
-	s.overview = s.overview || {};
+define(function(require) {
+
+var m = require('../vendor/mithril'),
+entry = require('../components/entry');
     
-    s.overview.controller = function() {
-    	this.entryControllers = s.user.entries.map(function(entry, index) {
-        	return new s.entry.controller(entry, index);
-        });
-    };
+function controller() {
+    this.entryControllers = s.user.entries.map(function(entry, index) {
+        return new s.entry.controller(entry, index);
+    });
+};
+
+function view(ctrl) {
+    return m('div', ctrl.entryControllers.map(function(entryCtrl) {
+        return s.entry.view(entryCtrl);
+    }));
+};
     
-    s.overview.view = function(ctrl) {
-    	return m('div', ctrl.entryControllers.map(function(entryCtrl) {
-        	return s.entry.view(entryCtrl);
-        }));
-    }
-    
-    return s;
-}(s || {}));
+return {
+	controller: controller,
+    view: view
+};
+
+});

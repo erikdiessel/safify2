@@ -6,13 +6,11 @@ Extends a given javascript object with another one,
 without mutating it. It returns the extended version;
 */
 
-var s = (function(s) {
-	s.extend = function(base/*::{}*/, extension/*::{}*/)/*::{}*/ {
+define(['./copying'], function(copy) {
+	return function(base/*::{}*/, extension/*::{}*/)/*::{}*/ {
     	var result = {};
-        s.copy(result, base);
-        s.copy(result, extension);
+        copy(result, base);
+        copy(result, extension);
         return result;
     };
-    
-    return s;
-}(s || {}));
+});

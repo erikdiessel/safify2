@@ -1,8 +1,8 @@
-(function() {
+define(function(require) {
 
-// TODO: adapt to AMD
-//l = s.localize(s.errorMessages);
-/*
+var md = require('../framework/mediator'),
+l      = require('../localization/localized');
+
 var messages = {
 	'authentificationFailed': l.authentificationFailed,
     'usernameUsed': l.usernameUsed,
@@ -10,7 +10,7 @@ var messages = {
     // reset message if this happens
     'transitioned': ""
 };
-*/
+
 
 var message = "";
 
@@ -20,9 +20,9 @@ for(var key in messages) {
     });
 }
 
-s.errorMessages = function() {
+return errorMessages = function() {
 	return m('div.error', message);
 };
 
 
-}());
+});

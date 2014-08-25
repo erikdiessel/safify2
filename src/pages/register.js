@@ -1,22 +1,23 @@
-(function() {
+define(function(require) {
 	
-namespace('s.pages.register');
+var m  = require('../vendor/mithril'),
+input  = require('../subcomponents/input'),
+button = require('../subcomponents/button')
+__     = require('../helpers/bind');
 
-s.pages.register.controller = function() {
-	this.l = s.localize(s.pages.register.l);
-    
+function controller() { 
     this.username = m.prop("");
     this.password = m.prop("");
     
     this.register = function() {
-    	s.user.register(this.username(), this.password())
+    	user.register(this.username(), this.password())
         .subscribe('registered', function() {
         	m.route('overview');
         });
     }.bind(this);
-}
+};
 
-s.pages.register.view = function(ctrl) {
+function view(ctrl) {
 	return m('div', [
     	s.input({
         	value: ctrl.username,
@@ -33,6 +34,11 @@ s.pages.register.view = function(ctrl) {
             label: ctrl.l.register
         })
     ]);
+};
+
+return {
+	controller: controller,
+    view: view
 }
     
-}());
+});

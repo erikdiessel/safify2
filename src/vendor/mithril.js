@@ -382,9 +382,19 @@ Mithril = m = new function app(window) {
 	}
 
 	m.withAttr = function(prop, withAttrCallback) {
+    	
 		return function(e) {
 			e = e || event
-			withAttrCallback(prop in e.currentTarget ? e.currentTarget[prop] : e.currentTarget.getAttribute(prop))
+            try {
+            	withAttrCallback(prop in e.currentTarget ? e.currentTarget[prop] : e.currentTarget.getAttribute(prop))
+            }
+			catch(e) {
+            	console.log('prop: ' + prop);
+                console.log('e.currentTarget: ' + e.currentTarget);
+                console.log('this: ' + this);
+                console.log('event: ' + event);
+                console.log('e: ' + e);
+            }
 		}
 	}
 

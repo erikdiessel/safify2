@@ -12,7 +12,11 @@ The user is implemented as a singleton object.
 */
 
 
-(function() {
+define(function(require) {
+
+var md   = require('../framework/mediator'),
+api      = require('../model/api'),
+security = require('../model/security');
 	
 var _username = undefined;
 var _password = undefined;
@@ -60,7 +64,7 @@ md().on('dataReceived', function(data) {
     md().pub('loggedIn');
 });
     
-}());
+});
 
 
 var s = (function(s) {

@@ -51,18 +51,6 @@ function controller() {
         );
     };
 
-    this.checkboxControllers = [
-        { label: this.l.uppercase, checked: this.useUppercase },
-        { label: this.l.numbers,   checked: this.useNumbers	  },
-        { label: this.l.special_characters, 
-          checked: this.useSpecialCharacters
-        }
-    ].map(function(setting) {
-        return new s.checkbox.controller(setting);   
-    });
-
-    this.lengthController = new s.range.controller();
-
     /* Creates an entry with the current generated
        password.
     */
@@ -74,7 +62,7 @@ function controller() {
 function view(ctrl) {
     return m("div", [
         m("span", ctrl.password()),
-        s.range.view({
+        range({
             value: ctrl.length,
             min: 4,
             max: 16,
@@ -85,7 +73,7 @@ function view(ctrl) {
         checkbox({ label: ctrl.l.special_characters, 
           checked: ctrl.useSpecialCharacters
         }),
-        s.button({
+        button({
             onclick: ctrl.createEntryWithPassword,
             label: ctrl.l.create_entry_with_generated_password
         })
