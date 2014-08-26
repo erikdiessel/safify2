@@ -2,7 +2,7 @@ define(function(require) {
 var m     = require('src/vendor/mithril'),
 loginPage = require('src/pages/login'),
 md        = require('src/framework/mediator'),
-__        = require('./helpers/jquery');
+__        = require('../helpers/jquery');
 
 describe("The loginPage", function() {
 
@@ -18,7 +18,7 @@ describe("The loginPage", function() {
         // a new Frame is shown (with 60 fps this happens
         // every 17ms), we need to wait this time so that
         // it is always loaded
-        setTimeout(done, 20);
+        setTimeout(done, 40);
     });
     
     it("has a password field", function() {
@@ -26,15 +26,15 @@ describe("The loginPage", function() {
     });
     
     it("has a Login button", function() {
-    	expect(this.loginButton.length).toBeGreaterThan(0);
+    	expect(this.loginButton.length).toBe(1);
     });
     
     it("has a usernameInput", function() {
-    	expect(this.usernameInput.length).toBeGreaterThan(0);
+    	expect(this.usernameInput.length).toBe(1);
     });
     
     it("has a passwordInput", function() {
-    	expect(this.passwordInput.length).toBeGreaterThan(0);
+    	expect(this.passwordInput.length).toBe(1);
     });
     
     it("Publishes to 'login' when a user clicks on the button", function() {

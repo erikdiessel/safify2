@@ -1,5 +1,6 @@
-define(['src/vendor/mithril', 'src/pages/register', 'src/framework/mediator'],
-function(m, registerPage, md) {
+define(['src/vendor/mithril', 'src/pages/register', 'src/framework/mediator',
+        '../helpers/jquery'],
+function(m, registerPage, md, __) {
 
 describe('The register page', function() {
 
@@ -11,19 +12,19 @@ describe('The register page', function() {
         this.registerButton = $('button:contains("Register")');
         
         // Ensure that the module is loaded by mithril
-        setTimeout(done, 20);
+        setTimeout(done, 40);
     });
     
     it("has a username input", function() {
-    	expect(this.usernameInput.length).toBeGreaterThan(0);
+    	expect(this.usernameInput.length).toBe(1);
     });
     
     it("has a password input", function() {
-    	expect(this.passwordInput.length).toBeGreaterThan(0);
+    	expect(this.passwordInput.length).toBe(1);
     });
     
     it("has a register button", function() {
-    	expect(this.registerButton.length).toBeGreaterThan(0);
+    	expect(this.registerButton.length).toBe(1);
     });
     
     it("publishes to 'register' when register button is clicked", function() {

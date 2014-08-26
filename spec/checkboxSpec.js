@@ -1,5 +1,5 @@
-define(['src/vendor/mithril', 'src/subcomponents/checkbox'],
-function(m, checkbox) {
+define(['src/vendor/mithril', 'src/subcomponents/checkbox', './helpers/jquery'],
+function(m, checkbox, __) {
 
 describe("The checkbox", function() {
 
@@ -14,18 +14,18 @@ describe("The checkbox", function() {
         );
         
         this.checkbox = $("[type=checkbox]");
-        this.label = $(":contains('My checkbox')");
+        this.label = $("label:contains('My checkbox')");
         
         // Ensure that module is rendered by mithril
-        setTimeout(done, 20);
+        setTimeout(done, 40);
     });
 
 	it("is displayed", function() {
-    	expect(this.checkbox.length).toBeGreaterThan(0);
+    	expect(this.checkbox.length).toBe(1);
     });
     
     it("has a label", function() {
-    	expect(this.label.length).toBeGreaterThan(0);
+    	expect(this.label.length).toBe(1);
     });
 
 	it("the 'checked' property changes when clicked", function() {
