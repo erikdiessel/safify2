@@ -2,7 +2,9 @@ define(function(require) {
 	
 var m  = require('../vendor/mithril'),
 input  = require('../subcomponents/input'),
-button = require('../subcomponents/button')
+button = require('../subcomponents/button'),
+l      = require('../localization/localized'),
+md     = require('../framework/mediator'),
 __     = require('../helpers/bind');
 
 function controller() { 
@@ -10,28 +12,25 @@ function controller() {
     this.password = m.prop("");
     
     this.register = function() {
-    	user.register(this.username(), this.password())
-        .subscribe('registered', function() {
-        	m.route('overview');
-        });
+    	md().pub('register', this.username(), this.password());
     }.bind(this);
 };
 
 function view(ctrl) {
 	return m('div', [
-    	s.input({
+    	input({
         	value: ctrl.username,
-        	label: ctrl.l.username,
+        	label: l.username,
             type: 'text'
         }),
-        s.input({
+        input({
         	value: ctrl.password,
-            label: ctrl.l.password,
+            label: l.password,
             type: 'password'
         }),
-        s.button({
+        button({
         	onclick: ctrl.register,
-            label: ctrl.l.register
+            label: l.register
         })
     ]);
 };
@@ -39,6 +38,6 @@ function view(ctrl) {
 return {
 	controller: controller,
     view: view
-}
+};
     
 });

@@ -30,9 +30,6 @@ function controller() {
     this.no_network = m.prop(false);
 
     this.login = function() {
-        console.log('clicked on login button');
-        console.log('with username ' + this.username());
-        console.log('with password ' + this.password());
         md().pub('login', this.username(), this.password());
         /*.subscribe('logged_in', function() { m.route('overview'); })
         .subscribe('authentification_failed', this.authentificationFailed)

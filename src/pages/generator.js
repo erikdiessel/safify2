@@ -19,6 +19,7 @@ used directly as the password for a new entry.
 define(function(require) {
 
 var m    = require('../vendor/mithril'),
+l        = require('../localization/localized'),
 range    = require('../subcomponents/range'),
 button   = require('../subcomponents/button'),
 checkbox = require('../subcomponents/checkbox'),
@@ -26,8 +27,6 @@ generatePassword = require('../model/generator');
 
 
 function controller() {
-    // localization
-    this.l = s.localize(s.generator.l);
 
     this.length = m.prop(6);
     this.useUppercase = m.prop(true);
@@ -50,6 +49,10 @@ function controller() {
             this.useSpecialCharacters()
         );
     };
+    
+    // Regenerates a password by simply issuing a
+    // redraw of the view
+    this.regenerate = m.redraw;
 
     /* Creates an entry with the current generated
        password.
@@ -66,16 +69,20 @@ function view(ctrl) {
             value: ctrl.length,
             min: 4,
             max: 16,
-            label: ctrl.l.length
+            label: l.length
         }),
-        checkbox({ label: ctrl.l.uppercase, checked: ctrl.useUppercase }),
-        checkbox({ label: ctrl.l.numbers, checked: ctrl.useNumbers }),
-        checkbox({ label: ctrl.l.special_characters, 
+        checkbox({ label: l.uppercase, checked: ctrl.useUppercase }),
+        checkbox({ label: l.numbers, checked: ctrl.useNumbers }),
+        checkbox({ label: l.specialCharacters, 
           checked: ctrl.useSpecialCharacters
         }),
         button({
+        	onclick: ctrl.regenerate,
+            label: l.regenerate
+        }),
+        button({
             onclick: ctrl.createEntryWithPassword,
-            label: ctrl.l.create_entry_with_generated_password
+            label: l.create_entry_with_generated_password
         })
     ]);    
 };

@@ -17,11 +17,11 @@ define(['../vendor/mithril'], function(m) {
 return function(config) {
     return m("label.topcoat-checkbox", [
         m("input[type=checkbox]", {
-            onchange: m.withAttr("checked", ctrl.checked),
-            checked: ctrl.checked()
+            onchange: m.withAttr("checked", config.checked),
+            checked: config.checked()
         }),
         m("div.topcoat-checkbox__checkmark"),
-        ctrl.label
+        config.label
     ]);
 };
 

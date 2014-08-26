@@ -2,7 +2,7 @@
 Input range subcomponent
 ========================
 
-This subcompoenent representsa topcoat range input,
+This subcompoenent represents a topcoat range input,
 together with a display of the current value.
 
 */
@@ -20,12 +20,12 @@ define(['../vendor/mithril'], function(m) {
     return function(config) {
     	return m("label", [
             m("input[type=range].topcoat-range", {
-                min: ctrl.min,
-                max: ctrl.max,
-                value: ctrl.value(),
-                onchange: m.withAttr("value", ctrl.value)
+                min: config.min,
+                max: config.max,
+                value: config.value(),
+                onchange: m.withAttr("value", config.value)
             }),
-            ctrl.label
+            config.label
         ]);
     };
 });
