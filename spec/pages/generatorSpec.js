@@ -30,7 +30,7 @@ describe("The generator page", function() {
         this.uppercaseCheckbox = $('label:contains(Uppercase) input');
         this.specialCheckbox = $('label:contains(Special) input');
         
-        setTimeout(done, 40); // ensure mithril has rendered module
+        setTimeout(done, 60); // ensure mithril has rendered module
     });
     
     it("has a password output with default parameters", function() {

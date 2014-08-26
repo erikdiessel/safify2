@@ -1,4 +1,4 @@
-define(['src/vendor/mithril', 'src/subcomponents/checkbox', './helpers/jquery'],
+define(['src/vendor/mithril', 'src/subcomponents/checkbox', '../helpers/jquery'],
 function(m, checkbox, __) {
 
 describe("The checkbox", function() {

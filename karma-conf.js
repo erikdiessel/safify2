@@ -26,7 +26,6 @@ module.exports = function(config) {
       { pattern: 'spec/encryptionSpec.js', included: false },
       { pattern: 'spec/mediatorSpec.js', included: false }, */
       { pattern: 'spec/*/*Spec.js', included: false },
-      { pattern: 'spec/*Spec.js', included: false },
       { pattern: 'spec/helpers/*.js', included: false },
       
       //{ pattern: 'src/helpers/autofill.js', included: false },
