@@ -8,25 +8,23 @@ and viewing.
 
 /// <reference path="../vendor/mithril.d.ts" />
 
-var s = (function(s) {
-	s.entry = {};
+define(function(require) {
     
-    s.entry.controller = function(entry, index) {
-    	this.title = entry.name;
-        
-        this.edit = m.route.bind(this, "edit/" + index);
-    };
-    
-    // should be augmented with markup
-    s.entry.view = function(ctrl) {
-    	return m('div', [
-        	m('span', ctrl.title),
-            s.button({
-            	onclick: ctrl.edit,
-                label: ctrl.l.edit
-            })
-        ]);
-    };
-    
-    return s;
-}(s || {}));
+var m  = require('../vendor/mithril'),
+    l  = require('../localization/localized'),
+button = require('../subcomponents/button');
+
+// should be augmented with markup
+return function(entry, index) {
+    var edit = m.route.bind(this, "edit/" + index);
+
+    return m('div', [
+        m('span', entry.title),
+        button({
+            onclick: edit,
+            label: l.edit
+        })
+    ]);
+};
+
+});

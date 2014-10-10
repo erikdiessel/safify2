@@ -15,8 +15,12 @@ var messages = {
 var message = "";
 
 for(var key in messages) {
+	console.log('key: '+ key);
+
 	md().on(key, function() {
+    	//console.log('key: ' +  key);
     	message = messages[key];
+        m.redraw(true);
     });
 }
 

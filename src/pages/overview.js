@@ -13,18 +13,17 @@ the corresponding actions to edit and show an entry.
 
 define(function(require) {
 
-var m = require('../vendor/mithril'),
-entry = require('../components/entry');
+var m          = require('../vendor/mithril'),
+entryComponent = require('../components/entry'),
+user           = require('../model/user');
     
 function controller() {
-    this.entryControllers = s.user.entries.map(function(entry, index) {
-        return new s.entry.controller(entry, index);
-    });
+
 };
 
 function view(ctrl) {
-    return m('div', ctrl.entryControllers.map(function(entryCtrl) {
-        return s.entry.view(entryCtrl);
+    return m('div', user.getEntries().map(function(entry, index) {
+        return entryComponent(entry, index)
     }));
 };
     

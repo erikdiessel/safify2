@@ -23,23 +23,23 @@ var _password = undefined;
 var entries = [];
 
 function save() {
-	var serverPassword = s.serverPassword(username, password);
-    var encryptedData = s.encrypt(username,
+	var serverPassword = api.serverPassword(username, password);
+    var encryptedData = security.encrypt(username,
     							  password,
                                   JSON.stringify(entries));
-	s.savePasswordList(username, serverPassword, encryptedData);
+	api.savePasswordList(username, serverPassword, encryptedData);
 }
 
 md().on('login', function(username, password) {
 	_username = username; _password = password;
-	var serverPassword = s.serverPassword(_username, _password);
-	s.retrieveData(username, serverPassword);
+	var serverPassword = security.serverPassword(_username, _password);
+	api.retrieveData(username, serverPassword);
 });
 
 md().on('register', function(username, password) {
 	_username = username; _password = password;
-	var serverPassword = s.serverPassword(_username, _password);
-    s.registerUser(_username, serverPassword);
+	var serverPassword = security.serverPassword(_username, _password);
+    api.registerUser(_username, serverPassword);
 });
 
 md().on('createEntry', function(entry) {
@@ -59,10 +59,14 @@ md().on('changeEntry', function(index, newEntry) {
 
 md().on('dataReceived', function(data) {
 	// decrypt data
-    var decrypted = s.decrypt(_username, _password, data);
+    var decrypted = security.decrypt(_username, _password, data);
     entries = JSON.parse(decrypted);
     md().pub('loggedIn');
 });
+
+return {
+    getEntries: function() { return entries; }
+};
     
 });
 

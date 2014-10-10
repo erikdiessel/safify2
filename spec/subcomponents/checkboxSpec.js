@@ -3,7 +3,7 @@ function(m, checkbox, __) {
 
 describe("The checkbox", function() {
 
-	beforeEach(function(done) {
+	beforeEach(function(/*done*/) {
     	this.checked = m.prop(true);
         
     	m.render(document.body,
@@ -17,7 +17,7 @@ describe("The checkbox", function() {
         this.label = $("label:contains('My checkbox')");
         
         // Ensure that module is rendered by mithril
-        setTimeout(done, 40);
+        //setTimeout(done, 40);
     });
 
 	it("is displayed", function() {

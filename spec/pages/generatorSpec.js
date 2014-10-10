@@ -20,8 +20,17 @@ which are newly rendered in a setTimeout with a timeout > 34ms.
 
 describe("The generator page", function() {
 
-	beforeEach(function(done) {
+	beforeEach(function() {
+    	document.body.innerHTML = "";
+    
     	m.module(document.body, generatorPage);
+        
+        
+        m.redraw(true);
+        
+        setTimeout(function() {
+        	expect(document.body.innerHTML).not.toEqual("");
+        }, 0);
         
         this.passwordSpan = $('span');
         this.lengthRange = $('[type=range]');
@@ -30,7 +39,7 @@ describe("The generator page", function() {
         this.uppercaseCheckbox = $('label:contains(Uppercase) input');
         this.specialCheckbox = $('label:contains(Special) input');
         
-        setTimeout(done, 60); // ensure mithril has rendered module
+        //setTimeout(done, 60); // ensure mithril has rendered module
     });
     
     it("has a password output with default parameters", function() {
@@ -41,17 +50,21 @@ describe("The generator page", function() {
         expect(this.passwordSpan.text().length).toEqual(6);
     });
 
-	it("generates a new password when regenerate is clicked", function(done) {
+	it("generates a new password when regenerate is clicked", function(/*done*/) {
         expect(this.regenerateButton.length).toBe(1);
         
         var oldPassword = this.passwordSpan.text();
         this.regenerateButton.click();
+        m.redraw(true);
         var newPassword = this.passwordSpan.text();
+        
+        expect(newPassword).not.toEqual(oldPassword);
+        /*
         setTimeout(function() {
         	// password should have changed now
-        	expect(newPassword).not.toEqual(oldPassword);
+        	
             done();
-        }, 40)
+        }, 40)*/
     });
     
     it("allows to set the length of the password", function(done) {

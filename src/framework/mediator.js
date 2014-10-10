@@ -19,6 +19,9 @@ var Mediator = function() {
                 func.apply(this, additionalInformation);
             });
         }
+        // Debugging:
+        console.log("Event " + event + " was published with data: " +
+                    Array.prototype.slice.call(arguments, 1));
     };
     
     // Currying of *pub* for use as a callback

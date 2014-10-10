@@ -23,7 +23,8 @@ login = require('../pages/login'),
 edit  = require('../pages/edit'),
 generator = require('../pages/generator'),
 overview  = require('../pages/overview'),
-register  = require('../pages/register');
+register  = require('../pages/register'),
+_ = require('../model/transitions');
 
 setTimeout(function() {
     m.route(document.body, "", {

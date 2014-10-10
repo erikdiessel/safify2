@@ -30,11 +30,11 @@ var s = (function(s) {
     
     return s;
 }(s || {}));
-(function() {
+define(function(require) {
 
-// TODO: adapt to AMD
-//l = s.localize(s.errorMessages);
-/*
+var md = require('../framework/mediator'),
+l      = require('../localization/localized');
+
 var messages = {
 	'authentificationFailed': l.authentificationFailed,
     'usernameUsed': l.usernameUsed,
@@ -42,22 +42,83 @@ var messages = {
     // reset message if this happens
     'transitioned': ""
 };
-*/
+
 
 var message = "";
 
 for(var key in messages) {
+	console.log('key: '+ key);
+
 	md().on(key, function() {
+    	//console.log('key: ' +  key);
     	message = messages[key];
+        m.redraw(true);
     });
 }
 
-s.errorMessages = function() {
+return errorMessages = function() {
 	return m('div.error', message);
 };
 
 
-}());
+});
+/* 
+Mediator
+========
+*/
+
+define(function(require) {
+
+require('../helpers/bind');
+
+var Mediator = function() {
+    
+	var subscriptions = {}; // private variable
+    
+    /* publishes an event */
+    this.pub = function(event/*::string*/ /*, additional information*/) {
+    	var additionalInformation = Array.prototype.slice.call(arguments, 1);
+        if(subscriptions[event]) {
+            subscriptions[event].forEach(function(func) {
+                func.apply(this, additionalInformation);
+            });
+        }
+    };
+    
+    // Currying of *pub* for use as a callback
+    this.publishing = function(/*arguments*/) {
+    	// store for use in returned function
+    	var myArguments = arguments;
+    	return function() {
+        	this.pub.apply(this, myArguments);
+        }.bind(this);
+    }.bind(this);
+    
+    // subscribe to an event
+    this.on = function(event, callback) {
+    	// initialize subscriptions for the event
+    	subscriptions[event] = subscriptions[event] || [];
+        subscriptions[event].push(callback);
+    };
+    
+    // Reset to original state
+    this.reset = function() {
+    	subscriptions = {};
+    };
+};
+
+var _md = undefined;
+
+// Mediator singleton
+return function() {
+	if(_md) {
+    	return _md;
+    } else {
+    	return _md = new Mediator();
+    }
+}
+
+});
 /*
 Autofill module
 ===============
@@ -175,17 +236,14 @@ Helper method to copy over attributes from one object
 to another.
 */
 
-var s = (function(s) {
-    
+define(function() {
     // Mutates *base*
-    s.copy = function(base, copying) {
+    return function(base, copying) {
         for(var key in copying) {
             base[key] = copying[key];
         };
     };
-    
-    return s;
-}(s || {}));
+});
 /*
 Extend helper
 ============
@@ -194,46 +252,46 @@ Extends a given javascript object with another one,
 without mutating it. It returns the extended version;
 */
 
-var s = (function(s) {
-	s.extend = function(base/*::{}*/, extension/*::{}*/)/*::{}*/ {
+define(['./copying'], function(copy) {
+	return function(base/*::{}*/, extension/*::{}*/)/*::{}*/ {
     	var result = {};
-        s.copy(result, base);
-        s.copy(result, extension);
+        copy(result, base);
+        copy(result, extension);
         return result;
     };
-    
-    return s;
-}(s || {}));
-/*
-Localization helper
-===================
+});
+/*~ Function.prototype.reduce polyfill */
 
-For localization we need to detect the
-user's language. Because we want the localization
-to be placed in sperate files but also to be bound
-to a specific page, we create a helper which can be
-used in the controller to specify the localization 
-strings.
-*/
-
-var s = (function(s) {
-    s.localize = function(localization) {
-        // set page.l to the localized strings
-        var locale = (navigator.language || navigator.userLanguage)
-        	.substring(0, 2);
-        // english localization as fallback
-        return localization[locale] || localization['en'];
-    };
-    
-    return s;
-}(s || {}));
+if ( 'function' !== typeof Array.prototype.reduce ) {
+  Array.prototype.reduce = function( callback /*, initialValue*/ ) {
+    'use strict';
+    if ( null === this || 'undefined' === typeof this ) {
+      throw new TypeError(
+         'Array.prototype.reduce called on null or undefined' );
+    }
+    if ( 'function' !== typeof callback ) {
+      throw new TypeError( callback + ' is not a function' );
+    }
+    var t = Object( this ), len = t.length >>> 0, k = 0, value;
+    if ( arguments.length >= 2 ) {
+      value = arguments[1];
+    } else {
+      while ( k < len && ! k in t ) k++; 
+      if ( k >= len )
+        throw new TypeError('Reduce of empty array with no initial value');
+      value = t[ k++ ];
+    }
+    for ( ; k < len ; k++ ) {
+      if ( k in t ) {
+         value = callback( value, t[k], k, t );
+      }
+    }
+    return value;
+  };
+}
 /*
 Request helper
 ==============
-
-This is a facade to m.request, with already
-set parameters, for a convenient interface
-to the safify-API.
 */
 
 /// <reference path="../vendor/mithril.d.ts" />
@@ -248,7 +306,7 @@ interface RequestConfig {
 }
 */
 
-var s = (function(s) {
+define(['../helpers/bind'], function() {
 
     // Helper function which returns the URL encoding of
     // the object.
@@ -259,90 +317,53 @@ var s = (function(s) {
         }).join("&");
     };
     
-    s.Request = function(config/*::RequestConfig*/) {
-    	// attributes
-    	this.next = undefined;
+    Request = function(config/*::RequestConfig*/) {
         this.handlers = {};
         this.defaultHandler = undefined;
-        this.firstRequest = this;
-        this.request/*::XMLHttpRequest*/ = undefined;
-        this.method = config.method;
         
         var isGetRequest = config.method.toLowerCase() == "get";
         
         var encodedData = toURLEncoding(config.data);
         
-        this.url = config.url + (isGetRequest ? "?" + encodedData : "");
+        var url = config.url + (isGetRequest ? "?" + encodedData : "");
                                 
-        this.payload = isGetRequest ? "" : encodedData;
+        var payload = isGetRequest ? "" : encodedData;
         
-        this.request = new XMLHttpRequest();
+        var request = new XMLHttpRequest();
         
-        this.request.onload = function() {
-        	if(this.handlers[this.request.status]) {
+        request.onload = function() {
+        	if(this.handlers[request.status]) {
             	// call the corresponding handler with the response
-            	this.handlers[this.request.status](this.request.responseText);
+            	this.handlers[request.status](request.responseText);
             } // there is no specific handler for this status code
             else {
-            	var defaultHandler = this.getDefaultHandler();
-            	if(defaultHandler) {
-                	defaultHandler(this.request.responseText);
+            	if(this.defaultHandler) {
+                	this.defaultHandler(request.responseText);
                 } else { // unhandled error
-                	throw new Error("Error during request for: " + this.url +
+                	throw new Error("Error during request for: " + url +
                     	" with data: " + JSON.stringify(config.data));
                 }
             }
-            if(this.next) {
-                // execute next request
-                this.next.execute();
-            }
         }.bind(this);
+        
+		request.open(config.method, url);
+		request.setRequestHeader('Content-Type',
+        		'application/x-www-form-urlencoded; charset=UTF-8');
+     	request.send(payload);
     };
     
-    s.Request.prototype.thereafter = 
-    function(nextRequest/*::Request*/)/*::Request*/ {
-    	this.next = nextRequest;
-        // store reference to the first request in the chain
-        nextRequest.firstRequest = this.firstRequest;
-        return nextRequest;
-    }; 
-    
-    s.Request.prototype.onStatus = function(status/*::number*/, callback) {
+    Request.prototype.onStatus = function(status/*::number*/, callback) {
     	this.handlers[status] = callback;
         return this;
     };
     
-    s.Request.prototype.otherwise = function(callback) {
+    Request.prototype.otherwise = function(callback) {
     	this.defaultHandler = callback;
         return this;
     };
     
-    s.Request.prototype.execute = function() {
-        this.request.open(this.method, this.url);
-        this.request.setRequestHeader('Content-Type',
-                	'application/x-www-form-urlencoded; charset=UTF-8');
-    	this.request.send(this.payload);
-    }
-    
-    s.Request.prototype.send = function()/*::void*/ {
-    	this.firstRequest.execute();
-    };
-    
-    s.Request.prototype.getDefaultHandler = function() {
-    	// Search recursively for a defaultHandler
-    	if(this.defaultHandler) {
-        	return this.defaultHandler;
-        } else {
-        	if(this.next) {
-            	return this.next.getDefaultHandler();
-            } else {
-            	return undefined;
-            }
-        }
-    }
-    
-    return s;
-}(s || {}));
+    return Request;
+});
 /*
 Localization for the generator page
 ===================================
@@ -389,6 +410,33 @@ var s = (function(s) {
     
     return s;
 }(s || {}));
+define(['../helpers/bind', '../helpers/reduce_polyfill',
+		'../helpers/extend',
+		'json!./main.json', 'json!./generator.json',
+        'json!./login.json', 'json!./errorMessages.json'],
+       function(__, __, extend, main, generator, login, errorMessages) {
+	
+
+/*function(require) {
+
+var __ = require('../helpers/bind'),
+__ = require('../helpers/reduce_polyfill'),
+main = require('json!./main.json');*/
+
+
+
+var localizations = [main, generator, login, errorMessages];
+
+var locale = (navigator.language || navigator.userLanguage).substring(0, 2);
+
+// Combine all localizations into one object
+var localized = localizations.reduce(function(acc, addition) {
+	return extend(acc, addition[locale]);
+}, {});
+
+return localized;
+
+});
 var s = (function(s) {
 	namespace('s.login');
     
@@ -426,11 +474,14 @@ s.pages.register.l = {
 
 
 }());
-(function() {
-// Use for AMD
+require.config({
+	paths: {
+        'text': '../vendor/requirejs_plugins/text',
+        'json': '../vendor/requirejs_plugins/json'
+    }
+});
 
-
-}());
+define(['./routes'], function() {});
 /*
 Routes
 ======
@@ -449,15 +500,26 @@ so that it is placed at the end of the execution
 queue.
 */
 
+define(function(require) {
+
+var m = require('../vendor/mithril'),
+login = require('../pages/login'),
+edit  = require('../pages/edit'),
+generator = require('../pages/generator'),
+overview  = require('../pages/overview'),
+register  = require('../pages/register');
+
 setTimeout(function() {
     m.route(document.body, "", {
-   		"": s.login,
-        "overview": s.overview,
-        "edit/:entryId": s.edit,
-        "generator": s.generator,
+   		"": login,
+        "overview":overview,
+        "edit/:entryId": edit,
+        "generator": generator,
         // "autofill":
-        "register": s.pages.register
+        "register": register
     }); 
+});
+
 });
 
 /*~
@@ -473,19 +535,23 @@ of performance reasons (increased code size).
 
 /// <reference path="../helpers/request.js" />
 
-var s = (function (s) {
-    // exposed as public constant, so that it can
+define(['../framework/mediator', '../helpers/request'],
+       function(md, Request) {
+
+    // exposed with a public setter, so that it can
     // be mocked for tests
-    s.API_BASE_URL = "https://safify-api.herokuapp.com/";
+    var API_BASE_URL = "https://safify-api.herokuapp.com/";
+    
+    function set_API_BASE_URL(url/*::string*/) {
+    	API_BASE_URL = url;
+    }
 
     // This private function returns the url for
     // a specific path of the API
     var API_URL = function (path/*::string*/)/*::string*/ {
         // important: use https:// protocol
-        return s.API_BASE_URL + path;
+        return API_BASE_URL + path;
     };
-
-
 
     /*~
     For ajax-requests we intentionally don't use the
@@ -495,25 +561,11 @@ var s = (function (s) {
     XMLHttpRequest-object which makes this approach
     also portable to other frameworks.
     */
-    // This function makes an AJAX-request to fetch the
-    // password data.
-    // username: string
-    // password: string   The server password
-    // handlers: {
-    // 		onAuthentificationFailed: function
-    //		onUsernameNotFound: function,
-    //		onNoConnection: function
-    // }
-    // returns: promise which is resolved when success,
-    // and passed the response data
-    // The respective functions in handlers are called
-    // when the AJAX-request returns such a success / error.
     // The function uses the API endpoint '/passwords'.
     
-    s.retrieveData = 
-    function (username/*::string*/,
+    function retrieveData(username/*::string*/,
     		  password/*::string*/)/*::Request*/ {
-        return new s.Request({
+        return new Request({
         	method: "GET",
             url: API_URL('passwords'),
             data: {
@@ -521,30 +573,16 @@ var s = (function (s) {
             	"password": password
             }
         }).onStatus(200, function(response) {
-        	m().pub('dataReceived', response)
-        }).onStatus(401, function() {
-        	m().pub('authentificationFailed');
-        }).onStatus(403, function() {
-        	m().pub('usernameNotFound');
-        });
+        	md().pub('dataReceived', response)
+        }).onStatus(401, md().publishing('authentificationFailed'))
+        .onStatus(403, md().publishing('usernameNotFound'));
     };
     
-    // Additional constants for this functions, so
-    // that clients don't have to hardcode status
-    // codes.
-    s.retrieveData.OK_STATUS = 200;
-    s.retrieveData.AUTHENTIFICATION_FAILED_STATUS = 401;
-    s.retrieveData.USERNAME_NOT_FOUND_STATUS = 403;
-
-
     // This function reqisters a user on the server
     // (via the endpoin '/register').
-    // It should *only* be called after an API-call
-    // to check whether the username is already used
-    // (via s.checkUsernameUsed).
-    s.registerUser = function (username/*::string*/,
-    						   password/*::string*/)/*::MithrilPromise*/ {
-    	return new s.Request({
+    function registerUser(username/*::string*/,
+    				      password/*::string*/)/*::Request*/ {
+    	return new Request({
         	method: "POST",
             url: API_URL("register"),
             data: {
@@ -552,30 +590,9 @@ var s = (function (s) {
                 "password": password
             }
         }).onStatus(201, md().publishing('loggedIn'))
-        .onStatus(409, md().publishing('usernameUsed'));
+        .onStatus(409, md().publishing('usernameUsed'))
+        .otherwise(md().publishing('networkError'));
     };
-    
-    s.registerUser.OK_STATUS = 201;
-
-    // username: string
-    // handlers: {
-    // onUsernameFree: function
-    // onUsernameUsed: function
-    // }
-    // DEPRECATED !
-    s.checkForUsername = 
-    function (username/*::string*/)/*::MithrilPromise*/ {
-    	return new s.Request({
-        	method: "GET",
-            url: API_URL("username_not_used"),
-            data: {
-            	'username': username
-            }
-        });
-    };
-    
-    s.checkForUsername.OK_STATUS = 200;
-    s.checkForUsername.USERNAME_USED_STATUS = 409;
 
     // Changes the password for authentification on the server
     // to a new one.
@@ -583,11 +600,10 @@ var s = (function (s) {
     // oldPassword: string   password used before
     // newPassword: string
     // callback: function    triggered when the request completes
-    s.changeServerPassword =
-    function (username/*::string*/,  oldPassword/*::string*/,
+    function changeServerPassword(username/*::string*/,  oldPassword/*::string*/,
               newPassword/*::string*/)/*::MithrilPromise*/ {
               
-        return new s.Request({
+        return new Request({
         	method: 'POST',
             url: API_URL('change_password'),
             data: {
@@ -595,18 +611,14 @@ var s = (function (s) {
                 'password': oldPassword,
                 'new_password': newPassword
             }
-        });      
+        }).onStatus(201, md().publishing('passwordSaved'))
+        .otherwise(md().publishing('networkError'));      
     };
     
-    s.changeServerPassword.OK_STATUS = 201;
-
-    // data: string    The password list to save
-    // callback: function     Executed when the request completes
-    s.savePasswordList =
-    function (username/*::string*/, password/*::string*/,
+    function savePasswordList(username/*::string*/, password/*::string*/,
     		  data/*::string*/)/*::MithrilPromise*/ { 
               
-        return new s.Request({
+        return new Request({
         	method: 'POST',
             url: API_URL('passwords'),
             data: {
@@ -614,14 +626,18 @@ var s = (function (s) {
                 'password': password,
                 'password_list': data
             }
-        });
+        }).onStatus(201, md().publishing('saved'))
+        .otherwise(md().publishing('networkError'));
     };
-    
-    s.savePasswordList.OK_STATUS = 201;
 
-    return s;
-}(s || {}));
-
+	return {
+    	set_API_BASE_URL: set_API_BASE_URL,
+        retrieveData: retrieveData,
+        registerUser: registerUser,
+        changeServerPassword: changeServerPassword,
+        savePasswordList: savePasswordList
+    };
+});
 /*
 Entry class
 ===========
@@ -743,7 +759,7 @@ is not directly available in javascript).
 
 /// <reference path="../vendor/sjcl.d.ts" />
 
-var s = (function(s) {
+define(['../vendor/sjcl'], function(sjcl) {
     
     /*
     Converts the given *password* string
@@ -766,22 +782,22 @@ var s = (function(s) {
     is already in memory and even more important.
     */
     
-    var clientPassword;
+    var clientPasswordMemo;
     // We have to check if username or password have
     // changed, in this case, the client password
     // *has* to be recomputed.
     var oldUsername;
     var oldPassword;
     
-    s.clientPassword = function(username/*::string*/,
+    function clientPassword(username/*::string*/,
     							password/*::string*/)/*::string*/ {
         
         // When the value is already computed, (with
         // the same username and password), return
         // it immediately and stop the computation.
-        if (clientPassword && username === oldUsername &&
+        if (clientPasswordMemo && username === oldUsername &&
             password === oldPassword) {
-            return clientPassword;
+            return clientPasswordMemo;
         }
         
         // store for next function call
@@ -834,11 +850,9 @@ var s = (function(s) {
         
         // Store the computed password for subsequent
         // function calls.
-        clientPassword = JSON.stringify(
+        return clientPasswordMemo = JSON.stringify(
             sjcl.misc.pbkdf2(password, salt, iterations)
         );
-        
-        return clientPassword;
     };
     
     /*
@@ -864,16 +878,16 @@ var s = (function(s) {
     */
     
     // Again, store for subsequent function calls
-    var serverPassword;
+    var serverPasswordMemo;
     var oldUsername;
     var oldPassword;
     
     
-    s.serverPassword = function(username/*::string*/,
+   function serverPassword(username/*::string*/,
     							password/*::string*/)/*::string*/ {
-        if(serverPassword && username == oldUsername
+        if(serverPasswordMemo && username == oldUsername
            && password == oldPassword) {
-            return serverPassword;
+            return serverPasswordMemo;
         }
         
         // store for next function call
@@ -890,12 +904,11 @@ var s = (function(s) {
         // generation of those two passwords.
         var iterations = 2347;
                     
- 		serverPassword = JSON.stringify(
+ 		return serverPasswordMemo = JSON.stringify(
         	sjcl.misc.pbkdf2(password, salt, iterations)
       	);
-        
-        return serverPassword;
     };
+    
     
     
     /*
@@ -910,24 +923,28 @@ var s = (function(s) {
     vector, so that they can be used standalone
     */
     
-    s.encrypt = function(username/*::string*/,
+    function encrypt(username/*::string*/,
                          password/*::string*/,
                          data/*::string*/)/*::sjcl.SjclCipherEncrypted*/ {
-        var key = s.clientPassword(username, password);
+        var key = clientPassword(username, password);
         return sjcl.encrypt(key, data);
     };
     
-    s.decrypt = function(username/*::string*/,
+    function decrypt(username/*::string*/,
                          password/*::string*/,
                          data/*::sjcl.SjclCipherEncrypted*/)/*::string*/ {
-    	var key = s.clientPassword(username, password);
+    	var key = clientPassword(username, password);
         return sjcl.decrypt(key, data);
     };
-   
     
+    return {
+    	serverPassword: serverPassword,
+        clientPassword: clientPassword,
+        encrypt: encrypt,
+        decrypt: decrypt
+    };
     
-    return s;
-}(s || {}));
+});
 (function() {
 
 md().on('loggedIn', function() {
@@ -949,30 +966,34 @@ The user is implemented as a singleton object.
 */
 
 
-(function() {
+define(function(require) {
+
+var md   = require('../framework/mediator'),
+api      = require('../model/api'),
+security = require('../model/security');
 	
 var _username = undefined;
 var _password = undefined;
 var entries = [];
 
 function save() {
-	var serverPassword = s.serverPassword(username, password);
-    var encryptedData = s.encrypt(username,
+	var serverPassword = api.serverPassword(username, password);
+    var encryptedData = security.encrypt(username,
     							  password,
                                   JSON.stringify(entries));
-	s.savePasswordList(username, serverPassword, encryptedData);
+	api.savePasswordList(username, serverPassword, encryptedData);
 }
 
 md().on('login', function(username, password) {
 	_username = username; _password = password;
 	var serverPassword = s.serverPassword(_username, _password);
-	s.retrieveData(username, serverPassword);
+	api.retrieveData(username, serverPassword);
 });
 
 md().on('register', function(username, password) {
 	_username = username; _password = password;
-	var serverPassword = s.serverPassword(_username, _password);
-    s.registerUser(_username, serverPassword);
+	var serverPassword = security.serverPassword(_username, _password);
+    api.registerUser(_username, serverPassword);
 });
 
 md().on('createEntry', function(entry) {
@@ -992,12 +1013,12 @@ md().on('changeEntry', function(index, newEntry) {
 
 md().on('dataReceived', function(data) {
 	// decrypt data
-    var decrypted = s.decrypt(_username, _password, data);
+    var decrypted = security.decrypt(_username, _password, data);
     entries = JSON.parse(decrypted);
     md().pub('loggedIn');
 });
     
-}());
+});
 
 
 var s = (function(s) {
@@ -1163,60 +1184,67 @@ On the editing page, a password entry can be
 edited and deleted.
 */
 
-var s = (function(s) {
-	// localization maybe has already modified s.edit
-	s.edit = s.edit || {}; 
-	
-    s.edit.controller = function() {
-    	// localization
-        this.l = s.localize(s.edit.l);
-    
-    	this.entryId = m.route.param("entryId");
-        
-        this.entry = user.entries.getEntry(this.entryId);
-        
-        this.saveEntry = function() {
-        	md().pub('changeEntry', this.entryId, this.entry);
-         	m.route('overview');   
-        }
-        
-        // TODO: Change this into displaying a confirmation
-        // dialog first
-        this.deleteEntry = user.deleteEntry.bind(this, index);
-    };
-    
-    s.edit.view = function(ctrl) {
-    	return m('div', [
-        	s.input({
-            	type: 'text',
-                label: ctrl.l.title,
-                value: ctrl.entry.title
-            }),
-            s.input({
-            	type: 'text',
-                label: ctrl.l.username,
-                value: ctrl.entry.username
-            }),
-            s.input({
-            	type: 'text',
-                label: ctrl.l.password,
-                value: ctrl.entry.password
-            }),
-            s.button({
-            	onclick: ctrl.saveEntry,
-                label: ctrl.l.save,
-                callToAction: true
-            }),
-            s.button({
-            	label: ctrl.l.delete,
-                onclick: ctrl.deleteEntry,
-                classes: ['danger']
-            })
-        ]);
-    };
+define(function(require) {
 
-	return s;
-}(s || {}));
+var m  = require('../vendor/mithril'),
+input  = require('../subcomponents/input'),
+button = require('../subcomponents/button')
+user   = require('../model/user');
+	
+function controller() {
+    // localization
+    this.l = s.localize(s.edit.l);
+
+    this.entryId = m.route.param("entryId");
+
+    this.entry = user.entries.getEntry(this.entryId);
+
+    this.saveEntry = function() {
+        md().pub('changeEntry', this.entryId, this.entry);
+        m.route('overview');   
+    }
+
+    // TODO: Change this into displaying a confirmation
+    // dialog first
+    this.deleteEntry = user.deleteEntry.bind(this, index);
+};
+
+function view(ctrl) {
+    return m('div', [
+        s.input({
+            type: 'text',
+            label: ctrl.l.title,
+            value: ctrl.entry.title
+        }),
+        s.input({
+            type: 'text',
+            label: ctrl.l.username,
+            value: ctrl.entry.username
+        }),
+        s.input({
+            type: 'text',
+            label: ctrl.l.password,
+            value: ctrl.entry.password
+        }),
+        s.button({
+            onclick: ctrl.saveEntry,
+            label: ctrl.l.save,
+            callToAction: true
+        }),
+        s.button({
+            label: ctrl.l.delete,
+            onclick: ctrl.deleteEntry,
+            classes: ['danger']
+        })
+    ]);
+};
+
+return {
+	controller: controller,
+    view: view
+};
+
+});
 /*
 The generator component
 =======================
@@ -1235,77 +1263,83 @@ criteria). Additionally the generated password can be
 used directly as the password for a new entry.
 */
 
-var s = (function(s) {
-    s.generator = s.generator || {};
+define(function(require) {
+
+var m    = require('../vendor/mithril'),
+l        = require('../localization/localized'),
+range    = require('../subcomponents/range'),
+button   = require('../subcomponents/button'),
+checkbox = require('../subcomponents/checkbox'),
+generatePassword = require('../model/generator');
+
+
+function controller() {
+
+    this.length = m.prop(6);
+    this.useUppercase = m.prop(true);
+    this.useNumbers = m.prop(true);
+    this.useSpecialCharacters = m.prop(false);
+
+    // private data store;
+    // this prevents recomputation of the
+    // password when the user wants to create an
+    // entry with this password;
+    var password;
+
+    this.password = function() {
+        // return the password and store it in
+        // the private attribute *password*
+        return password = generatePassword(
+            this.length(),
+            this.useUppercase(),
+            this.useNumbers(),
+            this.useSpecialCharacters()
+        );
+    };
     
-    s.generator.controller = function() {
-        // localization
-        this.l = s.localize(s.generator.l);
-        
-        this.length = m.prop(6);
-        this.useUppercase = m.prop(true);
-        this.useNumbers = m.prop(true);
-        this.useSpecialCharacters = m.prop(false);
- 		
-        // private data store;
-        // this prevents recomputation of the
-        // password when the user wants to create an
-        // entry with this password;
-        var password;
-       
-        this.password = function() {
-            // return the password and store it in
-            // the private attribute *password*
-            return password = s.generatePassword(
-            	this.length(),
-                this.useUppercase(),
-                this.useNumbers(),
-                this.useSpecialCharacters()
-            );
-        };
-        
-        this.checkboxControllers = [
-            { label: this.l.uppercase, checked: this.useUppercase },
-            { label: this.l.numbers,   checked: this.useNumbers	  },
-            { label: this.l.special_characters, 
-              checked: this.useSpecialCharacters
-            }
-        ].map(function(setting) {
-        	return new s.checkbox.controller(setting);   
-        });
-        
-        this.lengthController = new s.range.controller({
-            value: this.length,
+    // Regenerates a password by simply issuing a
+    // redraw of the view
+    this.regenerate = m.redraw;
+
+    /* Creates an entry with the current generated
+       password.
+    */
+    this.createEntryWithPassword = function() {
+        // TODO
+    }
+};
+
+function view(ctrl) {
+    return m("div", [
+        m("span", ctrl.password()),
+        range({
+            value: ctrl.length,
             min: 4,
             max: 16,
-            label: this.l.length
-        });
-        
-        /* Creates an entry with the current generated
-           password.
-		*/
-        this.createEntryWithPassword = function() {
-            // TODO
-        }
-    };
-    
-    s.generator.view = function(ctrl) {
-    	return m("div", [
-            m("span", ctrl.password()),
-			s.range.view(ctrl.lengthController),
-            ctrl.checkboxControllers.map(function(ctrl) {
-                return s.checkbox.view(ctrl);
-            }),
-            s.button({
-                onclick: ctrl.createEntryWithPassword,
-                label: ctrl.l.create_entry_with_generated_password
-            })
-        ]);    
-    };
-    
-    
-    return s;
-}(s || {}));
+            label: l.length
+        }),
+        checkbox({ label: l.uppercase, checked: ctrl.useUppercase }),
+        checkbox({ label: l.numbers, checked: ctrl.useNumbers }),
+        checkbox({ label: l.specialCharacters, 
+          checked: ctrl.useSpecialCharacters
+        }),
+        button({
+        	onclick: ctrl.regenerate,
+            label: l.regenerate
+        }),
+        button({
+            onclick: ctrl.createEntryWithPassword,
+            label: l.create_entry_with_generated_password
+        })
+    ]);    
+};
+
+return {
+	controller: controller,
+    view: view
+};
+
+});
 /*
 Login page
 ==========
@@ -1317,95 +1351,80 @@ it contains some promotional text and the bookmarklet
 as a link.
 */
 
-var s = (function(s) {
-	s.login = s.login || {}; // for localization
-    
-    
-    s.login.controller = function() {
-    	this.l = s.localize(s.login.l);
-    
-    	this.username = m.prop("");
-        this.password = m.prop("");
-        
-        this.wrong_password = m.prop(false);
-        this.wrong_username = m.prop(false);
-        this.no_network = m.prop(false);
-        
-        this.login = function() {
-            s.user.login(this.username(), this.password())
-            .subscribe('logged_in', function() { m.route('overview'); })
-            .subscribe('authentification_failed', this.authentificationFailed)
-            .subscribe('username_not_found', this.usernameNotFound)
-            .subscribe('other_error', this.networkError)
-        }.bind(this);
-        
-        this.resetErrorMessages = function() {
-            this.wrong_password(false);
-            this.wrong_username(false);
-            this.no_network(false);
-        }.bind(this);
-        
-        this.authentificationFailed = function() {
-            this.resetErrorMessages();
-            this.wrong_password(true);
-        }.bind(this);     
-        
-        this.usernameNotFound = function() {
-            this.resetErrorMessages();
-            this.wrong_username(true);
-        }.bind(this);
-    
-        this.networkError = function() {
-            this.resetErrorMessages();
-            this.no_network(true);
-        }.bind(this);        
-        
-        // Redirect to the generator page
-        // We pass along undefined, so that no other argument
-        // is appended by calling this bounded function
-        this.toGenerator = function() { m.route('generator'); };
-        
-        this.toRegistration = function() { m.route('register'); };
-    };
-    
+define(function(require) {
 
-    // TODO: augment the markup
-    s.login.view = function(ctrl) {
-    	return m('div', [
-        	s.errorMessage({
-            	message: ctrl.l.authentificationFailed,
-                visible: ctrl.wrong_password
-            }),
-        	s.input({
-                value: ctrl.username,
-            	label: ctrl.l.username,
-                type: 'text',
-            }),
-            s.input({
-            	value: ctrl.password,
-                label: ctrl.l.password,
-           		type: 'password'
-            }),
-            s.button({
-            	onclick: ctrl.login,
-                label: ctrl.l.login,
-                callToAction: true
-            }),
-            s.button({
-            	onclick: ctrl.toRegistration,
-                label: ctrl.l.register,
-                callToAction: true
-            }),
-            s.button({
-            	onclick: ctrl.toGenerator,
-                label: ctrl.l.generator
-            })
-            
-        ])
-    };
+var m  = require('../vendor/mithril'),
+md     = require('../framework/mediator'),
+input  = require('../subcomponents/input'),
+button = require('../subcomponents/button'),
+__	   = require('../helpers/bind'),
+user   = require('../model/user'),
+l      = require('../localization/localized'),
+errorMessages = require('../components/errorMessages');
+
     
-    return s;
-}(s || {}));
+function controller() {
+    this.username = m.prop("");
+    this.password = m.prop("");
+
+    this.wrong_password = m.prop(false);
+    this.wrong_username = m.prop(false);
+    this.no_network = m.prop(false);
+
+    this.login = function() {
+        md().pub('login', this.username(), this.password());
+        /*.subscribe('logged_in', function() { m.route('overview'); })
+        .subscribe('authentification_failed', this.authentificationFailed)
+        .subscribe('username_not_found', this.usernameNotFound)
+        .subscribe('other_error', this.networkError)*/
+    }.bind(this);        
+
+    // Redirect to the generator page
+    // We pass along undefined, so that no other argument
+    // is appended by calling this bounded function
+    this.toGenerator = function() { m.route('generator'); };
+
+    this.toRegistration = function() { m.route('register'); };
+};
+
+
+// TODO: augment the markup
+function view(ctrl) {
+    return m('div', [
+        errorMessages(),
+        input({
+            value: ctrl.username,
+            label: l.username,
+            type: 'text',
+        }),
+        input({
+            value: ctrl.password,
+            label: l.password,
+            type: 'password'
+        }),
+        button({
+            onclick: ctrl.login,
+            label: l.login,
+            callToAction: true
+        }),
+        button({
+            onclick: ctrl.toRegistration,
+            label: l.register,
+            callToAction: true
+        }),
+        button({
+            onclick: ctrl.toGenerator,
+            label: l.generator
+        })
+    ]);
+};
+
+return {
+	controller: controller,
+    view: view
+};
+
+});
 /*~
 Overview page
 =============
@@ -1419,61 +1438,72 @@ the corresponding actions to edit and show an entry.
 /// <reference path="../model/user.js" />
 /// <reference path="../components/entry.js" />
 
-var s = (function(s) {
-	s.overview = s.overview || {};
-    
-    s.overview.controller = function() {
-    	this.entryControllers = s.user.entries.map(function(entry, index) {
-        	return new s.entry.controller(entry, index);
-        });
-    };
-    
-    s.overview.view = function(ctrl) {
-    	return m('div', ctrl.entryControllers.map(function(entryCtrl) {
-        	return s.entry.view(entryCtrl);
-        }));
-    }
-    
-    return s;
-}(s || {}));
-(function() {
-	
-namespace('s.pages.register');
+define(function(require) {
 
-s.pages.register.controller = function() {
-	this.l = s.localize(s.pages.register.l);
+var m = require('../vendor/mithril'),
+entry = require('../components/entry');
     
+function controller() {
+    this.entryControllers = s.user.entries.map(function(entry, index) {
+        return new s.entry.controller(entry, index);
+    });
+};
+
+function view(ctrl) {
+    return m('div', ctrl.entryControllers.map(function(entryCtrl) {
+        return s.entry.view(entryCtrl);
+    }));
+};
+    
+return {
+	controller: controller,
+    view: view
+};
+
+});
+define(function(require) {
+	
+var m  = require('../vendor/mithril'),
+input  = require('../subcomponents/input'),
+button = require('../subcomponents/button'),
+l      = require('../localization/localized'),
+md     = require('../framework/mediator'),
+__     = require('../helpers/bind');
+
+function controller() { 
     this.username = m.prop("");
     this.password = m.prop("");
     
     this.register = function() {
-    	s.user.register(this.username(), this.password())
-        .subscribe('registered', function() {
-        	m.route('overview');
-        });
+    	md().pub('register', this.username(), this.password());
     }.bind(this);
-}
+};
 
-s.pages.register.view = function(ctrl) {
+function view(ctrl) {
 	return m('div', [
-    	s.input({
+    	input({
         	value: ctrl.username,
-        	label: ctrl.l.username,
+        	label: l.username,
             type: 'text'
         }),
-        s.input({
+        input({
         	value: ctrl.password,
-            label: ctrl.l.password,
+            label: l.password,
             type: 'password'
         }),
-        s.button({
+        button({
         	onclick: ctrl.register,
-            label: ctrl.l.register
+            label: l.register
         })
     ]);
-}
+};
+
+return {
+	controller: controller,
+    view: view
+};
     
-}());
+});
 /*
 Button subcomponent
 ===================
@@ -1482,40 +1512,37 @@ This component is a simple topcoat button,
 with an attached clicked handler.
 */
 
-var s = (function(s) {
-    /*
-    We refrain from specifying a controller, since
-    this provides a code size overhead: the controller
-    for the button has to be initialized and referenced
-    in the view. Instead we include the control part in
-    a single function which is the view.
-    */
-    // config: {
-    //   // required;  click handler
-    // 	 onclick: Function,
-    //   // required;  text on the button
-    //   label: String,
-    //   // if true, button is styled as call-to action button:
-    //   callToAction: bool, 
-    //   large: bool,
-    //   quiet: bool,
-    //   // string of additonally attached classes
-    //   classes: string
-    // }
-    s.button = function(config) {
-        return m("button", {
-            "class": 
-            	"topcoat-button" + (config.large ? "--large" : "") +
-            		(config.callToAction ? "--cta" : "") +
-            		(config.quiet ? "--quiet": "") +
-            	" " + (config.classes || ""),
-            onclick: config.onclick
-        }, config.label);
-    };
-    
-    
-    return s;
-}(s || {}));
+define(['../vendor/mithril'], function(m) {
+/*
+We refrain from specifying a controller, since
+this provides a code size overhead: the controller
+for the button has to be initialized and referenced
+in the view. Instead we include the control part in
+a single function which is the view.
+*/
+// config: {
+//   // required;  click handler
+// 	 onclick: Function,
+//   // required;  text on the button
+//   label: String,
+//   // if true, button is styled as call-to action button:
+//   callToAction: bool, 
+//   large: bool,
+//   quiet: bool,
+//   // string of additonally attached classes
+//   classes: string
+// }
+return function(config) {
+    return m("button", {
+        "class": 
+            "topcoat-button" + (config.large ? "--large" : "") +
+                (config.callToAction ? "--cta" : "") +
+                (config.quiet ? "--quiet": "") +
+            " " + (config.classes || ""),
+        onclick: config.onclick
+    }, config.label);
+};
+});
 /*
 Checkbox subcomponent
 =====================
@@ -1525,32 +1552,25 @@ the controller and view for a topcoat-
 styled checkbox
 */
 
-var s = (function(s) {
+define(['../vendor/mithril'], function(m) {
     
-    s.checkbox = {};
+// *config.checked* is a m.prop property which is 
+// then bound to the checkbox
+// *config.label* is the string which is shown next
+// to the checkbox
     
-    
-    // *setting.checked* is a m.prop property which is 
-    // then bound to the checkbox
-    // *setting.label* is the string which is shown next
-    // to the checkbox
-    s.checkbox.controller = function(setting) {
-    	s.copy(this, setting);
-    };
-    
-    s.checkbox.view = function(ctrl) {
-        return m("label.topcoat-checkbox", [
-            m("input[type=checkbox]", {
-                onchange: m.withAttr("checked", ctrl.checked),
-                checked: ctrl.checked()
-            }),
-            m("div.topcoat-checkbox__checkmark"),
-            ctrl.label
-        ]);
-    };
-    
-    return s;
-}(s || {}));
+return function(config) {
+    return m("label.topcoat-checkbox", [
+        m("input[type=checkbox]", {
+            onchange: m.withAttr("checked", config.checked),
+            checked: config.checked()
+        }),
+        m("div.topcoat-checkbox__checkmark"),
+        config.label
+    ]);
+};
+
+});
 
 /*
 Header subcomponent
@@ -1586,22 +1606,21 @@ interface InputOptions {
 }
 */
 
-var s = (function(s) {
-	s.input = 
-    function(config/*::InputOptions*/) /*::MithrilVirtualElement*/ {
-    	return m('label', [
-        	m('input', {
-            	type: config.type,
-                value: config.value(),
-                onchange: m.withAttr('value', config.value),
-                placeholder: config.label
-            }),
-            config.label
-        ]);
-    };
+define(['../vendor/mithril'], function(m) {
+
+return function(config/*::InputOptions*/) /*::MithrilVirtualElement*/ {
+    return m('label', [
+        m('input', {
+            type: config.type,
+            value: config.value(),
+            onchange: m.withAttr('value', config.value),
+            placeholder: config.label
+        }),
+        config.label
+    ]);
+};
     
-    return s;
-}(s || {}));
+});
 (function() {
 	namespace('s');
 
@@ -1614,40 +1633,714 @@ var s = (function(s) {
 Input range subcomponent
 ========================
 
-This subcompoenent representsa topcoat range input,
+This subcompoenent represents a topcoat range input,
 together with a display of the current value.
 
 */
 
 /// <reference path="../vendor/mithril.d.ts" />
 
-var s = (function(s) {
-    s.range = {};
-    
+define(['../vendor/mithril'], function(m) {
+
     // config: {
     // 	   label: string,
     //	   value: m.prop,
     //     min:   int,
     //     max:   int
-	// }
-    s.range.controller = function(config) {
-        s.copy(this, config);
-    }
-    
-    s.range.view = function(ctrl) {
+	// }    
+    return function(config) {
     	return m("label", [
             m("input[type=range].topcoat-range", {
-                min: ctrl.min,
-                max: ctrl.max,
-                value: ctrl.value(),
-                onchange: m.withAttr("value", ctrl.value)
+                min: config.min,
+                max: config.max,
+                value: config.value(),
+                onchange: m.withAttr("value", config.value)
             }),
-            ctrl.label
+            config.label
         ]);
     };
+});
+Mithril = m = new function app(window) {
+	var type = {}.toString
+	var parser = /(?:(^|#|\.)([^#\.\[\]]+))|(\[.+?\])/g, attrParser = /\[(.+?)(?:=("|'|)(.*?)\2)?\]/
+	
+	function m() {
+		var args = arguments
+		var hasAttrs = type.call(args[1]) == "[object Object]" && !("tag" in args[1]) && !("subtree" in args[1])
+		var attrs = hasAttrs ? args[1] : {}
+		var classAttrName = "class" in attrs ? "class" : "className"
+		var cell = {tag: "div", attrs: {}}
+		var match, classes = []
+		while (match = parser.exec(args[0])) {
+			if (match[1] == "") cell.tag = match[2]
+			else if (match[1] == "#") cell.attrs.id = match[2]
+			else if (match[1] == ".") classes.push(match[2])
+			else if (match[3][0] == "[") {
+				var pair = attrParser.exec(match[3])
+				cell.attrs[pair[1]] = pair[3] || (pair[2] ? "" :true)
+			}
+		}
+		if (classes.length > 0) cell.attrs[classAttrName] = classes.join(" ")
+		
+		cell.children = hasAttrs ? args[2] : args[1]
+		
+		for (var attrName in attrs) {
+			if (attrName == classAttrName) cell.attrs[attrName] = (cell.attrs[attrName] || "") + " " + attrs[attrName]
+			else cell.attrs[attrName] = attrs[attrName]
+		}
+		return cell
+	}
+	function build(parentElement, parentTag, parentCache, parentIndex, data, cached, shouldReattach, index, editable, namespace, configs) {
+		if (data === null || data === undefined) data = ""
+		if (data.subtree === "retain") return cached
+
+		var cachedType = type.call(cached), dataType = type.call(data)
+		if (cachedType != dataType) {
+			if (cached !== null && cached !== undefined) {
+				if (parentCache && parentCache.nodes) {
+					var offset = index - parentIndex
+					var end = offset + (dataType == "[object Array]" ? data : cached.nodes).length
+					clear(parentCache.nodes.slice(offset, end), parentCache.slice(offset, end))
+				}
+				else clear(cached.nodes, cached)
+			}
+			cached = new data.constructor
+			cached.nodes = []
+		}
+
+		if (dataType == "[object Array]") {
+			data = flatten(data)
+			var nodes = [], intact = cached.length === data.length, subArrayCount = 0
+			
+			var DELETION = 1, INSERTION = 2 , MOVE = 3
+			var existing = {}, unkeyed = [], shouldMaintainIdentities = false
+			for (var i = 0; i < cached.length; i++) {
+				if (cached[i] && cached[i].attrs && cached[i].attrs.key !== undefined) {
+					shouldMaintainIdentities = true
+					existing[cached[i].attrs.key] = {action: DELETION, index: i}
+				}
+			}
+			if (shouldMaintainIdentities) {
+				for (var i = 0; i < data.length; i++) {
+					if (data[i] && data[i].attrs) {
+						if (data[i].attrs.key !== undefined) {
+							var key = data[i].attrs.key
+							if (!existing[key]) existing[key] = {action: INSERTION, index: i}
+							else existing[key] = {action: MOVE, index: i, from: existing[key].index, element: parentElement.childNodes[existing[key].index]}
+						}
+						else unkeyed.push({index: i, element: parentElement.childNodes[i]})
+					}
+				}
+				var actions = Object.keys(existing).map(function(key) {return existing[key]})
+				var changes = actions.sort(function(a, b) {return a.action - b.action || a.index - b.index})
+				var newCached = cached.slice()
+				
+				for (var i = 0, change; change = changes[i]; i++) {
+					if (change.action == DELETION) {
+						clear(cached[change.index].nodes, cached[change.index])
+						newCached.splice(change.index, 1)
+					}
+					if (change.action == INSERTION) {
+						var dummy = window.document.createElement("div")
+						dummy.key = data[change.index].attrs.key
+						parentElement.insertBefore(dummy, parentElement.childNodes[change.index])
+						newCached.splice(change.index, 0, {attrs: {key: data[change.index].attrs.key}, nodes: [dummy]})
+					}
+					
+					if (change.action == MOVE) {
+						if (parentElement.childNodes[change.index] !== change.element) {
+							parentElement.insertBefore(change.element, parentElement.childNodes[change.index])
+						}
+						newCached[change.index] = cached[change.from]
+					}
+				}
+				for (var i = 0; i < unkeyed.length; i++) {
+					var change = unkeyed[i]
+					parentElement.insertBefore(change.element, parentElement.childNodes[change.index])
+					newCached[change.index] = cached[change.index]
+				}
+				cached = newCached
+				cached.nodes = []
+				for (var i = 0, child; child = parentElement.childNodes[i]; i++) cached.nodes.push(child)
+			}
+			
+			for (var i = 0, cacheCount = 0; i < data.length; i++) {
+				var item = build(parentElement, parentTag, cached, index, data[i], cached[cacheCount], shouldReattach, index + subArrayCount || subArrayCount, editable, namespace, configs)
+				if (item === undefined) continue
+				if (!item.nodes.intact) intact = false
+				var isArray = item instanceof Array
+				subArrayCount += isArray ? item.length : 1
+				cached[cacheCount++] = item
+			}
+			if (!intact) {
+				for (var i = 0; i < data.length; i++) {
+					if (cached[i] !== undefined) nodes = nodes.concat(cached[i].nodes)
+				}
+				for (var i = 0, node; node = cached.nodes[i]; i++) {
+					if (node.parentNode !== null && nodes.indexOf(node) < 0) node.parentNode.removeChild(node)
+				}
+				for (var i = cached.nodes.length, node; node = nodes[i]; i++) {
+					if (node.parentNode === null) parentElement.appendChild(node)
+				}
+				if (data.length < cached.length) cached.length = data.length
+				cached.nodes = nodes
+			}
+			
+		}
+		else if (dataType == "[object Object]") {
+			if (data.tag != cached.tag || Object.keys(data.attrs).join() != Object.keys(cached.attrs).join() || data.attrs.id != cached.attrs.id) {
+				clear(cached.nodes)
+				if (cached.configContext && typeof cached.configContext.onunload == "function") cached.configContext.onunload()
+			}
+			if (typeof data.tag != "string") return
+
+			var node, isNew = cached.nodes.length === 0
+			if (data.attrs.xmlns) namespace = data.attrs.xmlns
+			else if (data.tag === "svg") namespace = "http://www.w3.org/2000/svg"
+			if (isNew) {
+				node = namespace === undefined ? window.document.createElement(data.tag) : window.document.createElementNS(namespace, data.tag)
+				cached = {
+					tag: data.tag,
+					//process children before attrs so that select.value works correctly
+					children: data.children !== undefined ? build(node, data.tag, undefined, undefined, data.children, cached.children, true, 0, data.attrs.contenteditable ? node : editable, namespace, configs) : undefined,
+					attrs: setAttributes(node, data.tag, data.attrs, {}, namespace),
+					nodes: [node]
+				}
+				parentElement.insertBefore(node, parentElement.childNodes[index] || null)
+			}
+			else {
+				node = cached.nodes[0]
+				setAttributes(node, data.tag, data.attrs, cached.attrs, namespace)
+				cached.children = build(node, data.tag, undefined, undefined, data.children, cached.children, false, 0, data.attrs.contenteditable ? node : editable, namespace, configs)
+				cached.nodes.intact = true
+				if (shouldReattach === true) parentElement.insertBefore(node, parentElement.childNodes[index] || null)
+			}
+			if (type.call(data.attrs["config"]) == "[object Function]") {
+				configs.push(data.attrs["config"].bind(window, node, !isNew, cached.configContext = cached.configContext || {}, cached))
+			}
+		}
+		else {
+			var nodes
+			if (cached.nodes.length === 0) {
+				if (data.$trusted) {
+					nodes = injectHTML(parentElement, index, data)
+				}
+				else {
+					nodes = [window.document.createTextNode(data)]
+					parentElement.insertBefore(nodes[0], parentElement.childNodes[index] || null)
+				}
+				cached = "string number boolean".indexOf(typeof data) > -1 ? new data.constructor(data) : data
+				cached.nodes = nodes
+			}
+			else if (cached.valueOf() !== data.valueOf() || shouldReattach === true) {
+				nodes = cached.nodes
+				if (!editable || editable !== window.document.activeElement) {
+					if (data.$trusted) {
+						clear(nodes, cached)
+						nodes = injectHTML(parentElement, index, data)
+					}
+					else {
+						if (parentTag === "textarea") parentElement.value = data
+						else if (editable) editable.innerHTML = data
+						else {
+							if (nodes[0].nodeType == 1 || nodes.length > 1) { //was a trusted string
+								clear(cached.nodes, cached)
+								nodes = [window.document.createTextNode(data)]
+							}
+							parentElement.insertBefore(nodes[0], parentElement.childNodes[index] || null)
+							nodes[0].nodeValue = data
+						}
+					}
+				}
+				cached = new data.constructor(data)
+				cached.nodes = nodes
+			}
+			else cached.nodes.intact = true
+		}
+
+		return cached
+	}
+	function setAttributes(node, tag, dataAttrs, cachedAttrs, namespace) {
+		var groups = {}
+		for (var attrName in dataAttrs) {
+			var dataAttr = dataAttrs[attrName]
+			var cachedAttr = cachedAttrs[attrName]
+			if (!(attrName in cachedAttrs) || (cachedAttr !== dataAttr) || node === window.document.activeElement) {
+				cachedAttrs[attrName] = dataAttr
+				if (attrName === "config") continue
+				else if (typeof dataAttr == "function" && attrName.indexOf("on") == 0) {
+					node[attrName] = autoredraw(dataAttr, node)
+				}
+				else if (attrName === "style" && typeof dataAttr == "object") {
+					for (var rule in dataAttr) {
+						if (cachedAttr === undefined || cachedAttr[rule] !== dataAttr[rule]) node.style[rule] = dataAttr[rule]
+					}
+					for (var rule in cachedAttr) {
+						if (!(rule in dataAttr)) node.style[rule] = ""
+					}
+				}
+				else if (namespace !== undefined) {
+					if (attrName === "href") node.setAttributeNS("http://www.w3.org/1999/xlink", "href", dataAttr)
+					else if (attrName === "className") node.setAttribute("class", dataAttr)
+					else node.setAttribute(attrName, dataAttr)
+				}
+				else if (attrName === "value" && tag === "input") {
+					if (node.value !== dataAttr) node.value = dataAttr
+				}
+				else if (attrName in node && !(attrName == "list" || attrName == "style")) {
+					node[attrName] = dataAttr
+				}
+				else node.setAttribute(attrName, dataAttr)
+			}
+		}
+		return cachedAttrs
+	}
+	function clear(nodes, cached) {
+		for (var i = nodes.length - 1; i > -1; i--) {
+			if (nodes[i] && nodes[i].parentNode) {
+				nodes[i].parentNode.removeChild(nodes[i])
+				cached = [].concat(cached)
+				if (cached[i]) unload(cached[i])
+			}
+		}
+		if (nodes.length != 0) nodes.length = 0
+	}
+	function unload(cached) {
+		if (cached.configContext && typeof cached.configContext.onunload == "function") cached.configContext.onunload()
+		if (cached.children) {
+			if (cached.children instanceof Array) for (var i = 0; i < cached.children.length; i++) unload(cached.children[i])
+			else if (cached.children.tag) unload(cached.children)
+		}
+	}
+	function injectHTML(parentElement, index, data) {
+		var nextSibling = parentElement.childNodes[index]
+		if (nextSibling) {
+			var isElement = nextSibling.nodeType != 1
+			var placeholder = window.document.createElement("span")
+			if (isElement) {
+				parentElement.insertBefore(placeholder, nextSibling)
+				placeholder.insertAdjacentHTML("beforebegin", data)
+				parentElement.removeChild(placeholder)
+			}
+			else nextSibling.insertAdjacentHTML("beforebegin", data)
+		}
+		else parentElement.insertAdjacentHTML("beforeend", data)
+		var nodes = []
+		while (parentElement.childNodes[index] !== nextSibling) {
+			nodes.push(parentElement.childNodes[index])
+			index++
+		}
+		return nodes
+	}
+	function flatten(data) {
+		var flattened = []
+		for (var i = 0; i < data.length; i++) {
+			var item = data[i]
+			if (item instanceof Array) flattened.push.apply(flattened, flatten(item))
+			else flattened.push(item)
+		}
+		return flattened
+	}
+	function autoredraw(callback, object, group) {
+		return function(e) {
+			e = e || event
+			m.startComputation()
+			try {return callback.call(object, e)}
+			finally {
+				if (!lastRedrawId) lastRedrawId = -1;
+				m.endComputation()
+			}
+		}
+	}
+
+	var html
+	var documentNode = {
+		insertAdjacentHTML: function(_, data) {
+			window.document.write(data)
+			window.document.close()
+		},
+		appendChild: function(node) {
+			if (html === undefined) html = window.document.createElement("html")
+			if (node.nodeName == "HTML") html = node
+			else html.appendChild(node)
+			if (window.document.documentElement && window.document.documentElement !== html) {
+				window.document.replaceChild(html, window.document.documentElement)
+			}
+			else window.document.appendChild(html)
+		},
+		insertBefore: function(node) {
+			this.appendChild(node)
+		},
+		childNodes: []
+	}
+	var nodeCache = [], cellCache = {}
+	m.render = function(root, cell) {
+		var configs = []
+		if (!root) throw new Error("Please ensure the DOM element exists before rendering a template into it.")
+		var id = getCellCacheKey(root)
+		var node = root == window.document || root == window.document.documentElement ? documentNode : root
+		if (cellCache[id] === undefined) clear(node.childNodes)
+		cellCache[id] = build(node, null, undefined, undefined, cell, cellCache[id], false, 0, null, undefined, configs)
+		for (var i = 0; i < configs.length; i++) configs[i]()
+	}
+	function getCellCacheKey(element) {
+		var index = nodeCache.indexOf(element)
+		return index < 0 ? nodeCache.push(element) - 1 : index
+	}
+
+	m.trust = function(value) {
+		value = new String(value)
+		value.$trusted = true
+		return value
+	}
+
+	var roots = [], modules = [], controllers = [], lastRedrawId = 0, computePostRedrawHook = null
+	m.module = function(root, module) {
+		var index = roots.indexOf(root)
+		if (index < 0) index = roots.length
+		var isPrevented = false
+		if (controllers[index] && typeof controllers[index].onunload == "function") {
+			var event = {
+				preventDefault: function() {isPrevented = true}
+			}
+			controllers[index].onunload(event)
+		}
+		if (!isPrevented) {
+			m.startComputation()
+			roots[index] = root
+			modules[index] = module
+			controllers[index] = new module.controller
+			m.endComputation()
+		}
+	}
+	m.redraw = function() {
+		var cancel = window.cancelAnimationFrame || window.clearTimeout
+		var defer = window.requestAnimationFrame || window.setTimeout
+		if (lastRedrawId) {
+			cancel(lastRedrawId)
+			lastRedrawId = defer(redraw, 0)
+		}
+		else {
+			redraw()
+			lastRedrawId = defer(function() {lastRedrawId = null}, 0)
+		}
+	}
+	function redraw() {
+		for (var i = 0; i < roots.length; i++) {
+			if (controllers[i]) m.render(roots[i], modules[i].view(controllers[i]))
+		}
+		if (computePostRedrawHook) {
+			computePostRedrawHook()
+			computePostRedrawHook = null
+		}
+		lastRedrawId = null
+	}
+
+	var pendingRequests = 0
+	m.startComputation = function() {pendingRequests++}
+	m.endComputation = function() {
+		pendingRequests = Math.max(pendingRequests - 1, 0)
+		if (pendingRequests == 0) m.redraw()
+	}
+
+	m.withAttr = function(prop, withAttrCallback) {
+    	
+		return function(e) {
+			//e = e || event
+            target = this;
+            withAttrCallback(prop in target ? target[prop] : target.getAttribute(prop))
+		}
+	}
+
+	//routing
+	var modes = {pathname: "", hash: "#", search: "?"}
+	var redirect = function() {}, routeParams = {}, currentRoute
+	m.route = function() {
+		if (arguments.length === 0) return currentRoute
+		else if (arguments.length === 3 && typeof arguments[1] == "string") {
+			var root = arguments[0], defaultRoute = arguments[1], router = arguments[2]
+			redirect = function(source) {
+				var path = currentRoute = normalizeRoute(source)
+				if (!routeByValue(root, router, path)) {
+					m.route(defaultRoute, true)
+				}
+			}
+			var listener = m.route.mode == "hash" ? "onhashchange" : "onpopstate"
+			window[listener] = function() {
+				if (currentRoute != normalizeRoute(window.location[m.route.mode])) {
+					redirect(window.location[m.route.mode])
+				}
+			}
+			computePostRedrawHook = setScroll
+			window[listener]()
+		}
+		else if (arguments[0].addEventListener) {
+			var element = arguments[0]
+			var isInitialized = arguments[1]
+			if (element.href.indexOf(modes[m.route.mode]) < 0) {
+				element.href = window.location.pathname + modes[m.route.mode] + element.pathname
+			}
+			if (!isInitialized) {
+				element.removeEventListener("click", routeUnobtrusive)
+				element.addEventListener("click", routeUnobtrusive)
+			}
+		}
+		else if (typeof arguments[0] == "string") {
+			currentRoute = arguments[0]
+			var querystring = typeof arguments[1] == "object" ? buildQueryString(arguments[1]) : null
+			if (querystring) currentRoute += (currentRoute.indexOf("?") === -1 ? "?" : "&") + querystring
+
+			var shouldReplaceHistoryEntry = (arguments.length == 3 ? arguments[2] : arguments[1]) === true
+			
+			if (window.history.pushState) {
+				computePostRedrawHook = function() {
+					window.history[shouldReplaceHistoryEntry ? "replaceState" : "pushState"](null, window.document.title, modes[m.route.mode] + currentRoute)
+					setScroll()
+				}
+				redirect(modes[m.route.mode] + currentRoute)
+			}
+			else window.location[m.route.mode] = currentRoute
+		}
+	}
+	m.route.param = function(key) {return routeParams[key]}
+	m.route.mode = "search"
+	function normalizeRoute(route) {return route.slice(modes[m.route.mode].length)}
+	function routeByValue(root, router, path) {
+		routeParams = {}
+
+		var queryStart = path.indexOf("?")
+		if (queryStart !== -1) {
+			routeParams = parseQueryString(path.substr(queryStart + 1, path.length))
+			path = path.substr(0, queryStart)
+		}
+
+		for (var route in router) {
+			if (route == path) {
+				reset(root)
+				m.module(root, router[route])
+				return true
+			}
+
+			var matcher = new RegExp("^" + route.replace(/:[^\/]+?\.{3}/g, "(.*?)").replace(/:[^\/]+/g, "([^\\/]+)") + "\/?$")
+
+			if (matcher.test(path)) {
+				reset(root)
+				path.replace(matcher, function() {
+					var keys = route.match(/:[^\/]+/g) || []
+					var values = [].slice.call(arguments, 1, -2)
+					for (var i = 0; i < keys.length; i++) routeParams[keys[i].replace(/:|\./g, "")] = decodeSpace(values[i])
+					m.module(root, router[route])
+				})
+				return true
+			}
+		}
+	}
+	function reset(root) {
+		var cacheKey = getCellCacheKey(root)
+		clear(root.childNodes, cellCache[cacheKey])
+		cellCache[cacheKey] = undefined
+	}
+	function routeUnobtrusive(e) {
+		e = e || event
+		if (e.ctrlKey || e.metaKey || e.which == 2) return
+		e.preventDefault()
+		m.route(e.currentTarget[m.route.mode].slice(modes[m.route.mode].length))
+	}
+	function setScroll() {
+		if (m.route.mode != "hash" && window.location.hash) window.location.hash = window.location.hash
+		else window.scrollTo(0, 0)
+	}
+	function buildQueryString(object, prefix) {
     
-    return s;
-}(s || {}));
+		var str = []
+		for(var prop in object) {
+        	// TODO: Goes into endless recursion, because
+            // object 'window' has the property 'window'
+            // -> prevent that this is called with object=window
+			var key = prefix ? prefix + "[" + prop + "]" : prop, value = object[prop]
+			str.push(typeof value == "object" ? buildQueryString(value, key) : encodeURIComponent(key) + "=" + encodeURIComponent(value))
+		}
+		return str.join("&")
+	}
+	function parseQueryString(str) {
+		var pairs = str.split("&"), params = {}
+		for (var i = 0; i < pairs.length; i++) {
+			var pair = pairs[i].split("=")
+			params[decodeSpace(pair[0])] = pair[1] ? decodeSpace(pair[1]) : (pair.length === 1 ? true : "")
+		}
+		return params
+	}
+	function decodeSpace(string) {
+		return decodeURIComponent(string.replace(/\+/g, " "))
+	}
+
+	//model
+	m.prop = function(store) {
+		var prop = function() {
+			if (arguments.length) store = arguments[0]
+			return store
+		}
+		prop.toJSON = function() {
+			return store
+		}
+		return prop
+	}
+
+	var none = {}
+	m.deferred = function() {
+		var resolvers = [], rejecters = [], resolved = none, rejected = none, promise = m.prop()
+		var object = {
+			resolve: function(value) {
+				if (resolved === none) promise(resolved = value)
+				for (var i = 0; i < resolvers.length; i++) resolvers[i](value)
+				resolvers.length = rejecters.length = 0
+			},
+			reject: function(value) {
+				if (rejected === none) rejected = value
+				for (var i = 0; i < rejecters.length; i++) rejecters[i](value)
+				resolvers.length = rejecters.length = 0
+			},
+			promise: promise
+		}
+		object.promise.resolvers = resolvers
+		object.promise.then = function(success, error) {
+			var next = m.deferred()
+			if (!success) success = identity
+			if (!error) error = identity
+			function callback(method, callback) {
+				return function(value) {
+					try {
+						var result = callback(value)
+						if (result && typeof result.then == "function") result.then(next[method], error)
+						else next[method](result !== undefined ? result : value)
+					}
+					catch (e) {
+						if (e instanceof Error && e.constructor !== Error) throw e
+						else next.reject(e)
+					}
+				}
+			}
+			if (resolved !== none) callback("resolve", success)(resolved)
+			else if (rejected !== none) callback("reject", error)(rejected)
+			else {
+				resolvers.push(callback("resolve", success))
+				rejecters.push(callback("reject", error))
+			}
+			return next.promise
+		}
+		return object
+	}
+	m.sync = function(args) {
+		var method = "resolve"
+		function synchronizer(pos, resolved) {
+			return function(value) {
+				results[pos] = value
+				if (!resolved) method = "reject"
+				if (--outstanding == 0) {
+					deferred.promise(results)
+					deferred[method](results)
+				}
+				return value
+			}
+		}
+
+		var deferred = m.deferred()
+		var outstanding = args.length
+		var results = new Array(outstanding)
+		for (var i = 0; i < args.length; i++) {
+			args[i].then(synchronizer(i, true), synchronizer(i, false))
+		}
+		return deferred.promise
+	}
+	function identity(value) {return value}
+
+	function ajax(options) {
+		var xhr = new window.XMLHttpRequest
+		xhr.open(options.method, options.url, true, options.user, options.password)
+		xhr.onreadystatechange = function() {
+			if (xhr.readyState === 4) {
+				if (xhr.status >= 200 && xhr.status < 300) options.onload({type: "load", target: xhr})
+				else options.onerror({type: "error", target: xhr})
+			}
+		}
+		if (options.serialize == JSON.stringify && options.method != "GET") {
+			xhr.setRequestHeader("Content-Type", "application/json; charset=utf-8");
+		}
+		if (typeof options.config == "function") {
+			var maybeXhr = options.config(xhr, options)
+			if (maybeXhr !== undefined) xhr = maybeXhr
+		}
+		xhr.send(options.method == "GET" ? "" : options.data)
+		return xhr
+	}
+	function bindData(xhrOptions, data, serialize) {
+		if (data && Object.keys(data).length > 0) {
+			if (xhrOptions.method == "GET") {
+				xhrOptions.url = xhrOptions.url + (xhrOptions.url.indexOf("?") < 0 ? "?" : "&") + buildQueryString(data)
+			}
+			else xhrOptions.data = serialize(data)
+		}
+		return xhrOptions
+	}
+	function parameterizeUrl(url, data) {
+		var tokens = url.match(/:[a-z]\w+/gi)
+		if (tokens && data) {
+			for (var i = 0; i < tokens.length; i++) {
+				var key = tokens[i].slice(1)
+				url = url.replace(tokens[i], data[key])
+				delete data[key]
+			}
+		}
+		return url
+	}
+
+	m.request = function(xhrOptions) {
+		if (xhrOptions.background !== true) m.startComputation()
+		var deferred = m.deferred()
+		var serialize = xhrOptions.serialize = xhrOptions.serialize || JSON.stringify
+		var deserialize = xhrOptions.deserialize = xhrOptions.deserialize || JSON.parse
+		var extract = xhrOptions.extract || function(xhr) {
+			return xhr.responseText.length === 0 && deserialize === JSON.parse ? null : xhr.responseText
+		}
+		xhrOptions.url = parameterizeUrl(xhrOptions.url, xhrOptions.data)
+		xhrOptions = bindData(xhrOptions, xhrOptions.data, serialize)
+		xhrOptions.onload = xhrOptions.onerror = function(e) {
+			try {
+				e = e || event
+				var unwrap = (e.type == "load" ? xhrOptions.unwrapSuccess : xhrOptions.unwrapError) || identity
+				var response = unwrap(deserialize(extract(e.target, xhrOptions)))
+				if (e.type == "load") {
+					if (response instanceof Array && xhrOptions.type) {
+						for (var i = 0; i < response.length; i++) response[i] = new xhrOptions.type(response[i])
+					}
+					else if (xhrOptions.type) response = new xhrOptions.type(response)
+				}
+				deferred[e.type == "load" ? "resolve" : "reject"](response)
+			}
+			catch (e) {
+				if (e instanceof SyntaxError) throw new SyntaxError("Could not parse HTTP response. See http://lhorie.github.io/mithril/mithril.request.html#using-variable-data-formats")
+				else if (e instanceof Error && e.constructor !== Error) throw e
+				else deferred.reject(e)
+			}
+			if (xhrOptions.background !== true) m.endComputation()
+		}
+		ajax(xhrOptions)
+		return deferred.promise
+	}
+
+	//testing API
+	m.deps = function(mock) {return window = mock}
+	//for internal testing only, do not use `m.deps.factory`
+	m.deps.factory = app
+
+	return m
+}(typeof window != "undefined" ? window : {})
+
+if (typeof module != "undefined" && module !== null) module.exports = m
+if (typeof define == "function" && define.amd) define(function() {return m})
+
+;;;
+
 /*
  RequireJS 2.1.14 Copyright (c) 2010-2014, The Dojo Foundation All Rights Reserved.
  Available via the MIT or new BSD license.
@@ -1684,3 +2377,64 @@ b.xhtml?document.createElementNS("http://www.w3.org/1999/xhtml","html:script"):d
 (e.addEventListener("load",b.onScriptLoad,!1),e.addEventListener("error",b.onScriptError,!1)),e.src=d,J=e,D?y.insertBefore(e,D):y.appendChild(e),J=null,e;if(ea)try{importScripts(d),b.completeLoad(c)}catch(m){b.onError(C("importscripts","importScripts failed for "+c+" at "+d,m,[c]))}};z&&!q.skipDataMain&&T(document.getElementsByTagName("script"),function(b){y||(y=b.parentNode);if(I=b.getAttribute("data-main"))return s=I,q.baseUrl||(E=s.split("/"),s=E.pop(),O=E.length?E.join("/")+"/":"./",q.baseUrl=
 O),s=s.replace(Q,""),g.jsExtRegExp.test(s)&&(s=I),q.deps=q.deps?q.deps.concat(s):[s],!0});define=function(b,c,d){var e,g;"string"!==typeof b&&(d=c,c=b,b=null);H(c)||(d=c,c=null);!c&&G(d)&&(c=[],d.length&&(d.toString().replace(ka,"").replace(la,function(b,d){c.push(d)}),c=(1===d.length?["require"]:["require","exports","module"]).concat(c)));if(M){if(!(e=J))N&&"interactive"===N.readyState||T(document.getElementsByTagName("script"),function(b){if("interactive"===b.readyState)return N=b}),e=N;e&&(b||
 (b=e.getAttribute("data-requiremodule")),g=F[e.getAttribute("data-requirecontext")])}(g?g.defQueue:R).push([b,c,d])};define.amd={jQuery:!0};g.exec=function(b){return eval(b)};g(q)}})(this);
+"use strict";function q(a){throw a;}var t=void 0,u=!1;var sjcl={cipher:{},hash:{},keyexchange:{},mode:{},misc:{},codec:{},exception:{corrupt:function(a){this.toString=function(){return"CORRUPT: "+this.message};this.message=a},invalid:function(a){this.toString=function(){return"INVALID: "+this.message};this.message=a},bug:function(a){this.toString=function(){return"BUG: "+this.message};this.message=a},notReady:function(a){this.toString=function(){return"NOT READY: "+this.message};this.message=a}}};
+"undefined"!==typeof module&&module.exports&&(module.exports=sjcl);
+
+if(typeof define === "function") {
+	define([], function () {
+        return sjcl;
+    });
+}
+
+sjcl.cipher.aes=function(a){this.k[0][0][0]||this.D();var b,c,d,e,f=this.k[0][4],g=this.k[1];b=a.length;var h=1;4!==b&&(6!==b&&8!==b)&&q(new sjcl.exception.invalid("invalid aes key size"));this.b=[d=a.slice(0),e=[]];for(a=b;a<4*b+28;a++){c=d[a-1];if(0===a%b||8===b&&4===a%b)c=f[c>>>24]<<24^f[c>>16&255]<<16^f[c>>8&255]<<8^f[c&255],0===a%b&&(c=c<<8^c>>>24^h<<24,h=h<<1^283*(h>>7));d[a]=d[a-b]^c}for(b=0;a;b++,a--)c=d[b&3?a:a-4],e[b]=4>=a||4>b?c:g[0][f[c>>>24]]^g[1][f[c>>16&255]]^g[2][f[c>>8&255]]^g[3][f[c&
+255]]};
+sjcl.cipher.aes.prototype={encrypt:function(a){return y(this,a,0)},decrypt:function(a){return y(this,a,1)},k:[[[],[],[],[],[]],[[],[],[],[],[]]],D:function(){var a=this.k[0],b=this.k[1],c=a[4],d=b[4],e,f,g,h=[],l=[],k,n,m,p;for(e=0;0x100>e;e++)l[(h[e]=e<<1^283*(e>>7))^e]=e;for(f=g=0;!c[f];f^=k||1,g=l[g]||1){m=g^g<<1^g<<2^g<<3^g<<4;m=m>>8^m&255^99;c[f]=m;d[m]=f;n=h[e=h[k=h[f]]];p=0x1010101*n^0x10001*e^0x101*k^0x1010100*f;n=0x101*h[m]^0x1010100*m;for(e=0;4>e;e++)a[e][f]=n=n<<24^n>>>8,b[e][m]=p=p<<24^p>>>8}for(e=
+0;5>e;e++)a[e]=a[e].slice(0),b[e]=b[e].slice(0)}};
+function y(a,b,c){4!==b.length&&q(new sjcl.exception.invalid("invalid aes block size"));var d=a.b[c],e=b[0]^d[0],f=b[c?3:1]^d[1],g=b[2]^d[2];b=b[c?1:3]^d[3];var h,l,k,n=d.length/4-2,m,p=4,s=[0,0,0,0];h=a.k[c];a=h[0];var r=h[1],v=h[2],w=h[3],x=h[4];for(m=0;m<n;m++)h=a[e>>>24]^r[f>>16&255]^v[g>>8&255]^w[b&255]^d[p],l=a[f>>>24]^r[g>>16&255]^v[b>>8&255]^w[e&255]^d[p+1],k=a[g>>>24]^r[b>>16&255]^v[e>>8&255]^w[f&255]^d[p+2],b=a[b>>>24]^r[e>>16&255]^v[f>>8&255]^w[g&255]^d[p+3],p+=4,e=h,f=l,g=k;for(m=0;4>
+m;m++)s[c?3&-m:m]=x[e>>>24]<<24^x[f>>16&255]<<16^x[g>>8&255]<<8^x[b&255]^d[p++],h=e,e=f,f=g,g=b,b=h;return s}
+sjcl.bitArray={bitSlice:function(a,b,c){a=sjcl.bitArray.P(a.slice(b/32),32-(b&31)).slice(1);return c===t?a:sjcl.bitArray.clamp(a,c-b)},extract:function(a,b,c){var d=Math.floor(-b-c&31);return((b+c-1^b)&-32?a[b/32|0]<<32-d^a[b/32+1|0]>>>d:a[b/32|0]>>>d)&(1<<c)-1},concat:function(a,b){if(0===a.length||0===b.length)return a.concat(b);var c=a[a.length-1],d=sjcl.bitArray.getPartial(c);return 32===d?a.concat(b):sjcl.bitArray.P(b,d,c|0,a.slice(0,a.length-1))},bitLength:function(a){var b=a.length;return 0===
+b?0:32*(b-1)+sjcl.bitArray.getPartial(a[b-1])},clamp:function(a,b){if(32*a.length<b)return a;a=a.slice(0,Math.ceil(b/32));var c=a.length;b&=31;0<c&&b&&(a[c-1]=sjcl.bitArray.partial(b,a[c-1]&2147483648>>b-1,1));return a},partial:function(a,b,c){return 32===a?b:(c?b|0:b<<32-a)+0x10000000000*a},getPartial:function(a){return Math.round(a/0x10000000000)||32},equal:function(a,b){if(sjcl.bitArray.bitLength(a)!==sjcl.bitArray.bitLength(b))return u;var c=0,d;for(d=0;d<a.length;d++)c|=a[d]^b[d];return 0===
+c},P:function(a,b,c,d){var e;e=0;for(d===t&&(d=[]);32<=b;b-=32)d.push(c),c=0;if(0===b)return d.concat(a);for(e=0;e<a.length;e++)d.push(c|a[e]>>>b),c=a[e]<<32-b;e=a.length?a[a.length-1]:0;a=sjcl.bitArray.getPartial(e);d.push(sjcl.bitArray.partial(b+a&31,32<b+a?c:d.pop(),1));return d},l:function(a,b){return[a[0]^b[0],a[1]^b[1],a[2]^b[2],a[3]^b[3]]}};
+sjcl.codec.utf8String={fromBits:function(a){var b="",c=sjcl.bitArray.bitLength(a),d,e;for(d=0;d<c/8;d++)0===(d&3)&&(e=a[d/4]),b+=String.fromCharCode(e>>>24),e<<=8;return decodeURIComponent(escape(b))},toBits:function(a){a=unescape(encodeURIComponent(a));var b=[],c,d=0;for(c=0;c<a.length;c++)d=d<<8|a.charCodeAt(c),3===(c&3)&&(b.push(d),d=0);c&3&&b.push(sjcl.bitArray.partial(8*(c&3),d));return b}};
+sjcl.codec.hex={fromBits:function(a){var b="",c;for(c=0;c<a.length;c++)b+=((a[c]|0)+0xf00000000000).toString(16).substr(4);return b.substr(0,sjcl.bitArray.bitLength(a)/4)},toBits:function(a){var b,c=[],d;a=a.replace(/\s|0x/g,"");d=a.length;a+="00000000";for(b=0;b<a.length;b+=8)c.push(parseInt(a.substr(b,8),16)^0);return sjcl.bitArray.clamp(c,4*d)}};
+sjcl.codec.base64={J:"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",fromBits:function(a,b,c){var d="",e=0,f=sjcl.codec.base64.J,g=0,h=sjcl.bitArray.bitLength(a);c&&(f=f.substr(0,62)+"-_");for(c=0;6*d.length<h;)d+=f.charAt((g^a[c]>>>e)>>>26),6>e?(g=a[c]<<6-e,e+=26,c++):(g<<=6,e-=6);for(;d.length&3&&!b;)d+="=";return d},toBits:function(a,b){a=a.replace(/\s|=/g,"");var c=[],d,e=0,f=sjcl.codec.base64.J,g=0,h;b&&(f=f.substr(0,62)+"-_");for(d=0;d<a.length;d++)h=f.indexOf(a.charAt(d)),
+0>h&&q(new sjcl.exception.invalid("this isn't base64!")),26<e?(e-=26,c.push(g^h>>>e),g=h<<32-e):(e+=6,g^=h<<32-e);e&56&&c.push(sjcl.bitArray.partial(e&56,g,1));return c}};sjcl.codec.base64url={fromBits:function(a){return sjcl.codec.base64.fromBits(a,1,1)},toBits:function(a){return sjcl.codec.base64.toBits(a,1)}};sjcl.hash.sha256=function(a){this.b[0]||this.D();a?(this.r=a.r.slice(0),this.o=a.o.slice(0),this.h=a.h):this.reset()};sjcl.hash.sha256.hash=function(a){return(new sjcl.hash.sha256).update(a).finalize()};
+sjcl.hash.sha256.prototype={blockSize:512,reset:function(){this.r=this.N.slice(0);this.o=[];this.h=0;return this},update:function(a){"string"===typeof a&&(a=sjcl.codec.utf8String.toBits(a));var b,c=this.o=sjcl.bitArray.concat(this.o,a);b=this.h;a=this.h=b+sjcl.bitArray.bitLength(a);for(b=512+b&-512;b<=a;b+=512)z(this,c.splice(0,16));return this},finalize:function(){var a,b=this.o,c=this.r,b=sjcl.bitArray.concat(b,[sjcl.bitArray.partial(1,1)]);for(a=b.length+2;a&15;a++)b.push(0);b.push(Math.floor(this.h/
+4294967296));for(b.push(this.h|0);b.length;)z(this,b.splice(0,16));this.reset();return c},N:[],b:[],D:function(){function a(a){return 0x100000000*(a-Math.floor(a))|0}var b=0,c=2,d;a:for(;64>b;c++){for(d=2;d*d<=c;d++)if(0===c%d)continue a;8>b&&(this.N[b]=a(Math.pow(c,0.5)));this.b[b]=a(Math.pow(c,1/3));b++}}};
+function z(a,b){var c,d,e,f=b.slice(0),g=a.r,h=a.b,l=g[0],k=g[1],n=g[2],m=g[3],p=g[4],s=g[5],r=g[6],v=g[7];for(c=0;64>c;c++)16>c?d=f[c]:(d=f[c+1&15],e=f[c+14&15],d=f[c&15]=(d>>>7^d>>>18^d>>>3^d<<25^d<<14)+(e>>>17^e>>>19^e>>>10^e<<15^e<<13)+f[c&15]+f[c+9&15]|0),d=d+v+(p>>>6^p>>>11^p>>>25^p<<26^p<<21^p<<7)+(r^p&(s^r))+h[c],v=r,r=s,s=p,p=m+d|0,m=n,n=k,k=l,l=d+(k&n^m&(k^n))+(k>>>2^k>>>13^k>>>22^k<<30^k<<19^k<<10)|0;g[0]=g[0]+l|0;g[1]=g[1]+k|0;g[2]=g[2]+n|0;g[3]=g[3]+m|0;g[4]=g[4]+p|0;g[5]=g[5]+s|0;g[6]=
+g[6]+r|0;g[7]=g[7]+v|0}
+sjcl.mode.ccm={name:"ccm",encrypt:function(a,b,c,d,e){var f,g=b.slice(0),h=sjcl.bitArray,l=h.bitLength(c)/8,k=h.bitLength(g)/8;e=e||64;d=d||[];7>l&&q(new sjcl.exception.invalid("ccm: iv must be at least 7 bytes"));for(f=2;4>f&&k>>>8*f;f++);f<15-l&&(f=15-l);c=h.clamp(c,8*(15-f));b=sjcl.mode.ccm.L(a,b,c,d,e,f);g=sjcl.mode.ccm.p(a,g,c,b,e,f);return h.concat(g.data,g.tag)},decrypt:function(a,b,c,d,e){e=e||64;d=d||[];var f=sjcl.bitArray,g=f.bitLength(c)/8,h=f.bitLength(b),l=f.clamp(b,h-e),k=f.bitSlice(b,
+h-e),h=(h-e)/8;7>g&&q(new sjcl.exception.invalid("ccm: iv must be at least 7 bytes"));for(b=2;4>b&&h>>>8*b;b++);b<15-g&&(b=15-g);c=f.clamp(c,8*(15-b));l=sjcl.mode.ccm.p(a,l,c,k,e,b);a=sjcl.mode.ccm.L(a,l.data,c,d,e,b);f.equal(l.tag,a)||q(new sjcl.exception.corrupt("ccm: tag doesn't match"));return l.data},L:function(a,b,c,d,e,f){var g=[],h=sjcl.bitArray,l=h.l;e/=8;(e%2||4>e||16<e)&&q(new sjcl.exception.invalid("ccm: invalid tag length"));(0xffffffff<d.length||0xffffffff<b.length)&&q(new sjcl.exception.bug("ccm: can't deal with 4GiB or more data"));
+f=[h.partial(8,(d.length?64:0)|e-2<<2|f-1)];f=h.concat(f,c);f[3]|=h.bitLength(b)/8;f=a.encrypt(f);if(d.length){c=h.bitLength(d)/8;65279>=c?g=[h.partial(16,c)]:0xffffffff>=c&&(g=h.concat([h.partial(16,65534)],[c]));g=h.concat(g,d);for(d=0;d<g.length;d+=4)f=a.encrypt(l(f,g.slice(d,d+4).concat([0,0,0])))}for(d=0;d<b.length;d+=4)f=a.encrypt(l(f,b.slice(d,d+4).concat([0,0,0])));return h.clamp(f,8*e)},p:function(a,b,c,d,e,f){var g,h=sjcl.bitArray;g=h.l;var l=b.length,k=h.bitLength(b);c=h.concat([h.partial(8,
+f-1)],c).concat([0,0,0]).slice(0,4);d=h.bitSlice(g(d,a.encrypt(c)),0,e);if(!l)return{tag:d,data:[]};for(g=0;g<l;g+=4)c[3]++,e=a.encrypt(c),b[g]^=e[0],b[g+1]^=e[1],b[g+2]^=e[2],b[g+3]^=e[3];return{tag:d,data:h.clamp(b,k)}}};
+sjcl.mode.ocb2={name:"ocb2",encrypt:function(a,b,c,d,e,f){128!==sjcl.bitArray.bitLength(c)&&q(new sjcl.exception.invalid("ocb iv must be 128 bits"));var g,h=sjcl.mode.ocb2.H,l=sjcl.bitArray,k=l.l,n=[0,0,0,0];c=h(a.encrypt(c));var m,p=[];d=d||[];e=e||64;for(g=0;g+4<b.length;g+=4)m=b.slice(g,g+4),n=k(n,m),p=p.concat(k(c,a.encrypt(k(c,m)))),c=h(c);m=b.slice(g);b=l.bitLength(m);g=a.encrypt(k(c,[0,0,0,b]));m=l.clamp(k(m.concat([0,0,0]),g),b);n=k(n,k(m.concat([0,0,0]),g));n=a.encrypt(k(n,k(c,h(c))));d.length&&
+(n=k(n,f?d:sjcl.mode.ocb2.pmac(a,d)));return p.concat(l.concat(m,l.clamp(n,e)))},decrypt:function(a,b,c,d,e,f){128!==sjcl.bitArray.bitLength(c)&&q(new sjcl.exception.invalid("ocb iv must be 128 bits"));e=e||64;var g=sjcl.mode.ocb2.H,h=sjcl.bitArray,l=h.l,k=[0,0,0,0],n=g(a.encrypt(c)),m,p,s=sjcl.bitArray.bitLength(b)-e,r=[];d=d||[];for(c=0;c+4<s/32;c+=4)m=l(n,a.decrypt(l(n,b.slice(c,c+4)))),k=l(k,m),r=r.concat(m),n=g(n);p=s-32*c;m=a.encrypt(l(n,[0,0,0,p]));m=l(m,h.clamp(b.slice(c),p).concat([0,0,0]));
+k=l(k,m);k=a.encrypt(l(k,l(n,g(n))));d.length&&(k=l(k,f?d:sjcl.mode.ocb2.pmac(a,d)));h.equal(h.clamp(k,e),h.bitSlice(b,s))||q(new sjcl.exception.corrupt("ocb: tag doesn't match"));return r.concat(h.clamp(m,p))},pmac:function(a,b){var c,d=sjcl.mode.ocb2.H,e=sjcl.bitArray,f=e.l,g=[0,0,0,0],h=a.encrypt([0,0,0,0]),h=f(h,d(d(h)));for(c=0;c+4<b.length;c+=4)h=d(h),g=f(g,a.encrypt(f(h,b.slice(c,c+4))));c=b.slice(c);128>e.bitLength(c)&&(h=f(h,d(h)),c=e.concat(c,[-2147483648,0,0,0]));g=f(g,c);return a.encrypt(f(d(f(h,
+d(h))),g))},H:function(a){return[a[0]<<1^a[1]>>>31,a[1]<<1^a[2]>>>31,a[2]<<1^a[3]>>>31,a[3]<<1^135*(a[0]>>>31)]}};
+sjcl.mode.gcm={name:"gcm",encrypt:function(a,b,c,d,e){var f=b.slice(0);b=sjcl.bitArray;d=d||[];a=sjcl.mode.gcm.p(!0,a,f,d,c,e||128);return b.concat(a.data,a.tag)},decrypt:function(a,b,c,d,e){var f=b.slice(0),g=sjcl.bitArray,h=g.bitLength(f);e=e||128;d=d||[];e<=h?(b=g.bitSlice(f,h-e),f=g.bitSlice(f,0,h-e)):(b=f,f=[]);a=sjcl.mode.gcm.p(u,a,f,d,c,e);g.equal(a.tag,b)||q(new sjcl.exception.corrupt("gcm: tag doesn't match"));return a.data},Z:function(a,b){var c,d,e,f,g,h=sjcl.bitArray.l;e=[0,0,0,0];f=b.slice(0);
+for(c=0;128>c;c++){(d=0!==(a[Math.floor(c/32)]&1<<31-c%32))&&(e=h(e,f));g=0!==(f[3]&1);for(d=3;0<d;d--)f[d]=f[d]>>>1|(f[d-1]&1)<<31;f[0]>>>=1;g&&(f[0]^=-0x1f000000)}return e},g:function(a,b,c){var d,e=c.length;b=b.slice(0);for(d=0;d<e;d+=4)b[0]^=0xffffffff&c[d],b[1]^=0xffffffff&c[d+1],b[2]^=0xffffffff&c[d+2],b[3]^=0xffffffff&c[d+3],b=sjcl.mode.gcm.Z(b,a);return b},p:function(a,b,c,d,e,f){var g,h,l,k,n,m,p,s,r=sjcl.bitArray;m=c.length;p=r.bitLength(c);s=r.bitLength(d);h=r.bitLength(e);g=b.encrypt([0,
+0,0,0]);96===h?(e=e.slice(0),e=r.concat(e,[1])):(e=sjcl.mode.gcm.g(g,[0,0,0,0],e),e=sjcl.mode.gcm.g(g,e,[0,0,Math.floor(h/0x100000000),h&0xffffffff]));h=sjcl.mode.gcm.g(g,[0,0,0,0],d);n=e.slice(0);d=h.slice(0);a||(d=sjcl.mode.gcm.g(g,h,c));for(k=0;k<m;k+=4)n[3]++,l=b.encrypt(n),c[k]^=l[0],c[k+1]^=l[1],c[k+2]^=l[2],c[k+3]^=l[3];c=r.clamp(c,p);a&&(d=sjcl.mode.gcm.g(g,h,c));a=[Math.floor(s/0x100000000),s&0xffffffff,Math.floor(p/0x100000000),p&0xffffffff];d=sjcl.mode.gcm.g(g,d,a);l=b.encrypt(e);d[0]^=l[0];
+d[1]^=l[1];d[2]^=l[2];d[3]^=l[3];return{tag:r.bitSlice(d,0,f),data:c}}};sjcl.misc.hmac=function(a,b){this.M=b=b||sjcl.hash.sha256;var c=[[],[]],d,e=b.prototype.blockSize/32;this.n=[new b,new b];a.length>e&&(a=b.hash(a));for(d=0;d<e;d++)c[0][d]=a[d]^909522486,c[1][d]=a[d]^1549556828;this.n[0].update(c[0]);this.n[1].update(c[1]);this.G=new b(this.n[0])};
+sjcl.misc.hmac.prototype.encrypt=sjcl.misc.hmac.prototype.mac=function(a){this.Q&&q(new sjcl.exception.invalid("encrypt on already updated hmac called!"));this.update(a);return this.digest(a)};sjcl.misc.hmac.prototype.reset=function(){this.G=new this.M(this.n[0]);this.Q=u};sjcl.misc.hmac.prototype.update=function(a){this.Q=!0;this.G.update(a)};sjcl.misc.hmac.prototype.digest=function(){var a=this.G.finalize(),a=(new this.M(this.n[1])).update(a).finalize();this.reset();return a};
+sjcl.misc.pbkdf2=function(a,b,c,d,e){c=c||1E3;(0>d||0>c)&&q(sjcl.exception.invalid("invalid params to pbkdf2"));"string"===typeof a&&(a=sjcl.codec.utf8String.toBits(a));"string"===typeof b&&(b=sjcl.codec.utf8String.toBits(b));e=e||sjcl.misc.hmac;a=new e(a);var f,g,h,l,k=[],n=sjcl.bitArray;for(l=1;32*k.length<(d||1);l++){e=f=a.encrypt(n.concat(b,[l]));for(g=1;g<c;g++){f=a.encrypt(f);for(h=0;h<f.length;h++)e[h]^=f[h]}k=k.concat(e)}d&&(k=n.clamp(k,d));return k};
+sjcl.prng=function(a){this.c=[new sjcl.hash.sha256];this.i=[0];this.F=0;this.s={};this.C=0;this.K={};this.O=this.d=this.j=this.W=0;this.b=[0,0,0,0,0,0,0,0];this.f=[0,0,0,0];this.A=t;this.B=a;this.q=u;this.w={progress:{},seeded:{}};this.m=this.V=0;this.t=1;this.u=2;this.S=0x10000;this.I=[0,48,64,96,128,192,0x100,384,512,768,1024];this.T=3E4;this.R=80};
+sjcl.prng.prototype={randomWords:function(a,b){var c=[],d;d=this.isReady(b);var e;d===this.m&&q(new sjcl.exception.notReady("generator isn't seeded"));if(d&this.u){d=!(d&this.t);e=[];var f=0,g;this.O=e[0]=(new Date).valueOf()+this.T;for(g=0;16>g;g++)e.push(0x100000000*Math.random()|0);for(g=0;g<this.c.length&&!(e=e.concat(this.c[g].finalize()),f+=this.i[g],this.i[g]=0,!d&&this.F&1<<g);g++);this.F>=1<<this.c.length&&(this.c.push(new sjcl.hash.sha256),this.i.push(0));this.d-=f;f>this.j&&(this.j=f);this.F++;
+this.b=sjcl.hash.sha256.hash(this.b.concat(e));this.A=new sjcl.cipher.aes(this.b);for(d=0;4>d&&!(this.f[d]=this.f[d]+1|0,this.f[d]);d++);}for(d=0;d<a;d+=4)0===(d+1)%this.S&&A(this),e=B(this),c.push(e[0],e[1],e[2],e[3]);A(this);return c.slice(0,a)},setDefaultParanoia:function(a,b){0===a&&"Setting paranoia=0 will ruin your security; use it only for testing"!==b&&q("Setting paranoia=0 will ruin your security; use it only for testing");this.B=a},addEntropy:function(a,b,c){c=c||"user";var d,e,f=(new Date).valueOf(),
+g=this.s[c],h=this.isReady(),l=0;d=this.K[c];d===t&&(d=this.K[c]=this.W++);g===t&&(g=this.s[c]=0);this.s[c]=(this.s[c]+1)%this.c.length;switch(typeof a){case "number":b===t&&(b=1);this.c[g].update([d,this.C++,1,b,f,1,a|0]);break;case "object":c=Object.prototype.toString.call(a);if("[object Uint32Array]"===c){e=[];for(c=0;c<a.length;c++)e.push(a[c]);a=e}else{"[object Array]"!==c&&(l=1);for(c=0;c<a.length&&!l;c++)"number"!==typeof a[c]&&(l=1)}if(!l){if(b===t)for(c=b=0;c<a.length;c++)for(e=a[c];0<e;)b++,
+e>>>=1;this.c[g].update([d,this.C++,2,b,f,a.length].concat(a))}break;case "string":b===t&&(b=a.length);this.c[g].update([d,this.C++,3,b,f,a.length]);this.c[g].update(a);break;default:l=1}l&&q(new sjcl.exception.bug("random: addEntropy only supports number, array of numbers or string"));this.i[g]+=b;this.d+=b;h===this.m&&(this.isReady()!==this.m&&C("seeded",Math.max(this.j,this.d)),C("progress",this.getProgress()))},isReady:function(a){a=this.I[a!==t?a:this.B];return this.j&&this.j>=a?this.i[0]>this.R&&
+(new Date).valueOf()>this.O?this.u|this.t:this.t:this.d>=a?this.u|this.m:this.m},getProgress:function(a){a=this.I[a?a:this.B];return this.j>=a?1:this.d>a?1:this.d/a},startCollectors:function(){this.q||(this.a={loadTimeCollector:D(this,this.aa),mouseCollector:D(this,this.ba),keyboardCollector:D(this,this.$),accelerometerCollector:D(this,this.U)},window.addEventListener?(window.addEventListener("load",this.a.loadTimeCollector,u),window.addEventListener("mousemove",this.a.mouseCollector,u),window.addEventListener("keypress",
+this.a.keyboardCollector,u),window.addEventListener("devicemotion",this.a.accelerometerCollector,u)):document.attachEvent?(document.attachEvent("onload",this.a.loadTimeCollector),document.attachEvent("onmousemove",this.a.mouseCollector),document.attachEvent("keypress",this.a.keyboardCollector)):q(new sjcl.exception.bug("can't attach event")),this.q=!0)},stopCollectors:function(){this.q&&(window.removeEventListener?(window.removeEventListener("load",this.a.loadTimeCollector,u),window.removeEventListener("mousemove",
+this.a.mouseCollector,u),window.removeEventListener("keypress",this.a.keyboardCollector,u),window.removeEventListener("devicemotion",this.a.accelerometerCollector,u)):document.detachEvent&&(document.detachEvent("onload",this.a.loadTimeCollector),document.detachEvent("onmousemove",this.a.mouseCollector),document.detachEvent("keypress",this.a.keyboardCollector)),this.q=u)},addEventListener:function(a,b){this.w[a][this.V++]=b},removeEventListener:function(a,b){var c,d,e=this.w[a],f=[];for(d in e)e.hasOwnProperty(d)&&
+e[d]===b&&f.push(d);for(c=0;c<f.length;c++)d=f[c],delete e[d]},$:function(){E(1)},ba:function(a){sjcl.random.addEntropy([a.x||a.clientX||a.offsetX||0,a.y||a.clientY||a.offsetY||0],2,"mouse");E(0)},aa:function(){E(2)},U:function(a){a=a.accelerationIncludingGravity.x||a.accelerationIncludingGravity.y||a.accelerationIncludingGravity.z;var b="";window.orientation&&(b=window.orientation);sjcl.random.addEntropy([a,b],3,"accelerometer");E(0)}};
+function C(a,b){var c,d=sjcl.random.w[a],e=[];for(c in d)d.hasOwnProperty(c)&&e.push(d[c]);for(c=0;c<e.length;c++)e[c](b)}function E(a){window&&window.performance&&"function"===typeof window.performance.now?sjcl.random.addEntropy(window.performance.now(),a,"loadtime"):sjcl.random.addEntropy((new Date).valueOf(),a,"loadtime")}function A(a){a.b=B(a).concat(B(a));a.A=new sjcl.cipher.aes(a.b)}function B(a){for(var b=0;4>b&&!(a.f[b]=a.f[b]+1|0,a.f[b]);b++);return a.A.encrypt(a.f)}
+function D(a,b){return function(){b.apply(a,arguments)}}sjcl.random=new sjcl.prng(6);
+a:try{var F,G,H;if("undefined"!==typeof module&&module.exports)G=require("crypto"),F=G.randomBytes(128),sjcl.random.addEntropy(F,1024,"crypto['randomBytes']");else if(window&&Uint32Array){H=new Uint32Array(32);if(window.crypto&&window.crypto.getRandomValues)window.crypto.getRandomValues(H);else if(window.msCrypto&&window.msCrypto.getRandomValues)window.msCrypto.getRandomValues(H);else break a;sjcl.random.addEntropy(H,1024,"crypto['getRandomValues']")}}catch(I){console.log("There was an error collecting entropy from the browser:"),
+console.log(I)}
+sjcl.json={defaults:{v:1,iter:1E3,ks:128,ts:64,mode:"ccm",adata:"",cipher:"aes"},Y:function(a,b,c,d){c=c||{};d=d||{};var e=sjcl.json,f=e.e({iv:sjcl.random.randomWords(4,0)},e.defaults),g;e.e(f,c);c=f.adata;"string"===typeof f.salt&&(f.salt=sjcl.codec.base64.toBits(f.salt));"string"===typeof f.iv&&(f.iv=sjcl.codec.base64.toBits(f.iv));(!sjcl.mode[f.mode]||!sjcl.cipher[f.cipher]||"string"===typeof a&&100>=f.iter||64!==f.ts&&96!==f.ts&&128!==f.ts||128!==f.ks&&192!==f.ks&&0x100!==f.ks||2>f.iv.length||4<
+f.iv.length)&&q(new sjcl.exception.invalid("json encrypt: invalid parameters"));"string"===typeof a?(g=sjcl.misc.cachedPbkdf2(a,f),a=g.key.slice(0,f.ks/32),f.salt=g.salt):sjcl.ecc&&a instanceof sjcl.ecc.elGamal.publicKey&&(g=a.kem(),f.kemtag=g.tag,a=g.key.slice(0,f.ks/32));"string"===typeof b&&(b=sjcl.codec.utf8String.toBits(b));"string"===typeof c&&(c=sjcl.codec.utf8String.toBits(c));g=new sjcl.cipher[f.cipher](a);e.e(d,f);d.key=a;f.ct=sjcl.mode[f.mode].encrypt(g,b,f.iv,c,f.ts);return f},encrypt:function(a,
+b,c,d){var e=sjcl.json,f=e.Y.apply(e,arguments);return e.encode(f)},X:function(a,b,c,d){c=c||{};d=d||{};var e=sjcl.json;b=e.e(e.e(e.e({},e.defaults),b),c,!0);var f;c=b.adata;"string"===typeof b.salt&&(b.salt=sjcl.codec.base64.toBits(b.salt));"string"===typeof b.iv&&(b.iv=sjcl.codec.base64.toBits(b.iv));(!sjcl.mode[b.mode]||!sjcl.cipher[b.cipher]||"string"===typeof a&&100>=b.iter||64!==b.ts&&96!==b.ts&&128!==b.ts||128!==b.ks&&192!==b.ks&&0x100!==b.ks||!b.iv||2>b.iv.length||4<b.iv.length)&&q(new sjcl.exception.invalid("json decrypt: invalid parameters"));
+"string"===typeof a?(f=sjcl.misc.cachedPbkdf2(a,b),a=f.key.slice(0,b.ks/32),b.salt=f.salt):sjcl.ecc&&a instanceof sjcl.ecc.elGamal.secretKey&&(a=a.unkem(sjcl.codec.base64.toBits(b.kemtag)).slice(0,b.ks/32));"string"===typeof c&&(c=sjcl.codec.utf8String.toBits(c));f=new sjcl.cipher[b.cipher](a);c=sjcl.mode[b.mode].decrypt(f,b.ct,b.iv,c,b.ts);e.e(d,b);d.key=a;return sjcl.codec.utf8String.fromBits(c)},decrypt:function(a,b,c,d){var e=sjcl.json;return e.X(a,e.decode(b),c,d)},encode:function(a){var b,c=
+"{",d="";for(b in a)if(a.hasOwnProperty(b))switch(b.match(/^[a-z0-9]+$/i)||q(new sjcl.exception.invalid("json encode: invalid property name")),c+=d+'"'+b+'":',d=",",typeof a[b]){case "number":case "boolean":c+=a[b];break;case "string":c+='"'+escape(a[b])+'"';break;case "object":c+='"'+sjcl.codec.base64.fromBits(a[b],0)+'"';break;default:q(new sjcl.exception.bug("json encode: unsupported type"))}return c+"}"},decode:function(a){a=a.replace(/\s/g,"");a.match(/^\{.*\}$/)||q(new sjcl.exception.invalid("json decode: this isn't json!"));
+a=a.replace(/^\{|\}$/g,"").split(/,/);var b={},c,d;for(c=0;c<a.length;c++)(d=a[c].match(/^(?:(["']?)([a-z][a-z0-9]*)\1):(?:(\d+)|"([a-z0-9+\/%*_.@=\-]*)")$/i))||q(new sjcl.exception.invalid("json decode: this isn't json!")),b[d[2]]=d[3]?parseInt(d[3],10):d[2].match(/^(ct|salt|iv)$/)?sjcl.codec.base64.toBits(d[4]):unescape(d[4]);return b},e:function(a,b,c){a===t&&(a={});if(b===t)return a;for(var d in b)b.hasOwnProperty(d)&&(c&&(a[d]!==t&&a[d]!==b[d])&&q(new sjcl.exception.invalid("required parameter overridden")),
+a[d]=b[d]);return a},ea:function(a,b){var c={},d;for(d in a)a.hasOwnProperty(d)&&a[d]!==b[d]&&(c[d]=a[d]);return c},da:function(a,b){var c={},d;for(d=0;d<b.length;d++)a[b[d]]!==t&&(c[b[d]]=a[b[d]]);return c}};sjcl.encrypt=sjcl.json.encrypt;sjcl.decrypt=sjcl.json.decrypt;sjcl.misc.ca={};
+sjcl.misc.cachedPbkdf2=function(a,b){var c=sjcl.misc.ca,d;b=b||{};d=b.iter||1E3;c=c[a]=c[a]||{};d=c[d]=c[d]||{firstSalt:b.salt&&b.salt.length?b.salt.slice(0):sjcl.random.randomWords(2,0)};c=b.salt===t?d.firstSalt:b.salt;d[c]=d[c]||sjcl.misc.pbkdf2(a,c,b.iter);return{key:d[c].slice(0),salt:c.slice(0)}};

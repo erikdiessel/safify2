@@ -1,0 +1,9 @@
+{
+
+"en": {
+	"authentificationFailed": "Username or password is wrong.",
+    "usernameUsed": "This username is already in use.",
+    "usernameNotFound": "This username does not exist."
+}
+
+}
