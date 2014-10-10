@@ -9,17 +9,15 @@ edited and deleted.
 define(function(require) {
 
 var m  = require('../vendor/mithril'),
+    l  = require('../localization/localized'),
 input  = require('../subcomponents/input'),
-button = require('../subcomponents/button')
+button = require('../subcomponents/button'),
 user   = require('../model/user');
 	
 function controller() {
-    // localization
-    this.l = s.localize(s.edit.l);
-
     this.entryId = m.route.param("entryId");
 
-    this.entry = user.entries.getEntry(this.entryId);
+    this.entry = user.getEntries()[this.entryId];
 
     this.saveEntry = function() {
         md().pub('changeEntry', this.entryId, this.entry);
@@ -28,33 +26,33 @@ function controller() {
 
     // TODO: Change this into displaying a confirmation
     // dialog first
-    this.deleteEntry = user.deleteEntry.bind(this, index);
+    //this.deleteEntry = user.deleteEntry.bind(this, index);
 };
 
 function view(ctrl) {
     return m('div', [
         s.input({
             type: 'text',
-            label: ctrl.l.title,
+            label: l.title,
             value: ctrl.entry.title
         }),
         s.input({
             type: 'text',
-            label: ctrl.l.username,
+            label: l.username,
             value: ctrl.entry.username
         }),
         s.input({
             type: 'text',
-            label: ctrl.l.password,
+            label: l.password,
             value: ctrl.entry.password
         }),
         s.button({
             onclick: ctrl.saveEntry,
-            label: ctrl.l.save,
+            label: l.save,
             callToAction: true
         }),
         s.button({
-            label: ctrl.l.delete,
+            label: l.delete,
             onclick: ctrl.deleteEntry,
             classes: ['danger']
         })

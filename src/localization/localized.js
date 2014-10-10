@@ -2,9 +2,9 @@ define(['../helpers/bind', '../helpers/reduce_polyfill',
 		'../helpers/extend',
 		'json!./main.json', 'json!./generator.json',
         'json!./login.json', 'json!./errorMessages.json',
-        'json!./entry.json'],
-       function(__, __, extend, main, generator, login, errorMessages,
-                entry) {
+        'json!./entry.json', 'json!./edit.json'],
+       function(__, __, extend, main, generator, login,
+                errorMessages, entry, edit) {
 	
 
 /*function(require) {
@@ -15,7 +15,8 @@ main = require('json!./main.json');*/
 
 
 
-var localizations = [main, generator, login, errorMessages, entry];
+var localizations = [main, generator, login,
+      errorMessages, entry, edit];
 
 var locale = (navigator.language || navigator.userLanguage).substring(0, 2);
 
