@@ -16,7 +16,10 @@ button = require('../subcomponents/button');
 
 // should be augmented with markup
 return function(entry, index) {
-    var edit = m.route.bind(this, "edit/" + index);
+    var edit = function() {
+        m.route("edit/" + index);
+    };
+    //m.route.bind(this, "edit/" + index);
 
     return m('div', [
         m('span', entry.title),

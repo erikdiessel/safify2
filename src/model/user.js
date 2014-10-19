@@ -23,11 +23,11 @@ var _password = undefined;
 var entries = [];
 
 function save() {
-	var serverPassword = api.serverPassword(username, password);
-    var encryptedData = security.encrypt(username,
-    							  password,
+	var serverPassword = security.serverPassword(_username, _password);
+    var encryptedData = security.encrypt(_username,
+    							  _password,
                                   JSON.stringify(entries));
-	api.savePasswordList(username, serverPassword, encryptedData);
+	api.savePasswordList(_username, serverPassword, encryptedData);
 }
 
 md().on('login', function(username, password) {

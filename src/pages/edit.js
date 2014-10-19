@@ -9,20 +9,22 @@ edited and deleted.
 define(function(require) {
 
 var m  = require('../vendor/mithril'),
+   md  = require('../framework/mediator')
     l  = require('../localization/localized'),
 input  = require('../subcomponents/input'),
 button = require('../subcomponents/button'),
-user   = require('../model/user');
+user   = require('../model/user'),
+PropertyEntry  = require('../model/propertyEntry');
 	
 function controller() {
     this.entryId = m.route.param("entryId");
 
-    this.entry = user.getEntries()[this.entryId];
+    this.entry = new PropertyEntry(user.getEntries()[this.entryId]);
 
     this.saveEntry = function() {
-        md().pub('changeEntry', this.entryId, this.entry);
+        md().pub('changeEntry', this.entryId, this.entry.serialize());
         m.route('overview');   
-    }
+    }.bind(this);
 
     // TODO: Change this into displaying a confirmation
     // dialog first
@@ -31,27 +33,27 @@ function controller() {
 
 function view(ctrl) {
     return m('div', [
-        s.input({
+        input({
             type: 'text',
             label: l.title,
             value: ctrl.entry.title
         }),
-        s.input({
+        input({
             type: 'text',
             label: l.username,
             value: ctrl.entry.username
         }),
-        s.input({
+        input({
             type: 'text',
             label: l.password,
             value: ctrl.entry.password
         }),
-        s.button({
+        button({
             onclick: ctrl.saveEntry,
             label: l.save,
             callToAction: true
         }),
-        s.button({
+        button({
             label: l.delete,
             onclick: ctrl.deleteEntry,
             classes: ['danger']
