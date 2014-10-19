@@ -14,17 +14,26 @@ the corresponding actions to edit and show an entry.
 define(function(require) {
 
 var m          = require('../vendor/mithril'),
+    l          = require('../localization/localized'),
 entryComponent = require('../components/entry'),
-user           = require('../model/user');
+user           = require('../model/user'),
+button        = require('../subcomponents/button');
     
 function controller() {
 
 };
 
 function view(ctrl) {
-    return m('div', user.getEntries().map(function(entry, index) {
-        return entryComponent(entry, index)
-    }));
+    return m('div', [
+        m('div', user.getEntries().map(function(entry, index) {
+            return entryComponent(entry, index)
+        })),
+        button({
+            onclick: function() { m.route('/new') },
+            callToAction: true,
+            label: l.newEntry
+        })
+    ]);
 };
     
 return {
