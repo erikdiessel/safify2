@@ -14,17 +14,20 @@ var messages = {
 
 var message = "";
 
-for(var key in messages) {
-	console.log('key: '+ key);
+Object.keys(messages).forEach(function(key) {
+ 	console.log('key: '+ key);
 
 	md().on(key, function() {
-    	//console.log('key: ' +  key);
+    	console.log('key: ' +  key + " triggered");
     	message = messages[key];
-        m.redraw(true);
+        /* We signalize the end of an asynchronous
+           computation to force a redraw.
+        */
+        m.endComputation();
     });
-}
+});
 
-return errorMessages = function() {
+return function() {
 	return m('div.error', message);
 };
 

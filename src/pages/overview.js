@@ -26,7 +26,7 @@ function controller() {
 function view(ctrl) {
     return m('div', [
         m('div', user.getEntries().map(function(entry, index) {
-            return entryComponent(entry, index)
+            return entryComponent(entry, index);
         })),
         button({
             onclick: function() { m.route('/new') },

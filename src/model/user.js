@@ -31,6 +31,15 @@ function save() {
 }
 
 md().on('login', function(username, password) {
+    /* Since we do an asynchronous call and want to show (in case)
+       all error messages, we have to signalize Mithril the start
+       of an asynchronous call. This is later resolved in the 
+       errorMessages - module with m.endComputation, such that a
+       redraw is triggered. In the case of no existing error messages
+       we signalize the end with m.endComputation inside dataReceived
+    */
+    m.startComputation();
+    
 	_username = username; _password = password;
 	var serverPassword = security.serverPassword(_username, _password);
 	api.retrieveData(username, serverPassword);
@@ -62,6 +71,7 @@ md().on('dataReceived', function(data) {
     var decrypted = security.decrypt(_username, _password, data);
     entries = JSON.parse(decrypted);
     md().pub('loggedIn');
+    m.endComputation();
 });
 
 return {
