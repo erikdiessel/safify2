@@ -9,8 +9,6 @@ autosubmits a given form.
 */
 
 define(function() {
-	
-//namespace('s.helpers');
 
 
 // Converts a given html-string into the element represented
@@ -60,6 +58,9 @@ function(form/*::HTMLElement*/, siteOrigin/*::string*/)/*::void*/ {
     }
 };
  
+/* Returns a form element, which has all given information
+   already filled in. It can then be submitted directly.
+*/
 return function(formHTML/*::string*/, siteOrigin/*::string*/,
 	     username/*::string*/, password/*::string*/)/*::HTMLElement*/ {
 	var form = htmlToElement(formHTML);

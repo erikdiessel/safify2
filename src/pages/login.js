@@ -29,8 +29,9 @@ function controller() {
     this.wrong_username = m.prop(false);
     this.no_network = m.prop(false);
 
-    this.login = function() {
+    this.login = function(event) {
         md().pub('login', this.username(), this.password());
+        
         /*.subscribe('logged_in', function() { m.route('overview'); })
         .subscribe('authentification_failed', this.authentificationFailed)
         .subscribe('username_not_found', this.usernameNotFound)
@@ -38,8 +39,6 @@ function controller() {
     }.bind(this);        
 
     // Redirect to the generator page
-    // We pass along undefined, so that no other argument
-    // is appended by calling this bounded function
     this.toGenerator = function() { m.route('generator'); };
 
     this.toRegistration = function() { m.route('register'); };
@@ -50,21 +49,26 @@ function controller() {
 function view(ctrl) {
     return m('div', [
         errorMessages(),
-        input({
-            value: ctrl.username,
-            label: l.username,
-            type: 'text',
-        }),
-        input({
-            value: ctrl.password,
-            label: l.password,
-            type: 'password'
-        }),
-        button({
-            onclick: ctrl.login,
-            label: l.login,
-            callToAction: true
-        }),
+        m('form', [
+            input({
+                value: ctrl.username,
+                label: l.username,
+                type: 'text',
+                autofocus: true
+            }),
+            input({
+                value: ctrl.password,
+                label: l.password,
+                type: 'password'
+            }),
+            button({
+                onclick: ctrl.login,
+                label: l.login,
+                callToAction: true,
+                submit: true
+            })
+        ]),
+        
         button({
             onclick: ctrl.toRegistration,
             label: l.register,

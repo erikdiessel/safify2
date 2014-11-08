@@ -18,6 +18,7 @@ interface InputOptions {
     label: string;
     value: MithrilProperty;
     type: string;
+    autofocus: bool
 }
 */
 
@@ -29,7 +30,8 @@ return function(config/*::InputOptions*/) /*::MithrilVirtualElement*/ {
             type: config.type,
             value: config.value(),
             onchange: m.withAttr('value', config.value),
-            placeholder: config.label
+            placeholder: config.label,
+            autofocus: config.autofocus
         }),
         config.label
     ]);

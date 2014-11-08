@@ -25,15 +25,33 @@ a single function which is the view.
 //   quiet: bool,
 //   // string of additonally attached classes
 //   classes: string
+//   // whether this is is an input-submit button for a form
+//   submit: bool
 // }
 return function(config) {
-    return m("button", {
-        "class": 
-            "topcoat-button" + (config.large ? "--large" : "") +
+    var classes = "topcoat-button" + (config.large ? "--large" : "") +
                 (config.callToAction ? "--cta" : "") +
                 (config.quiet ? "--quiet": "") +
-            " " + (config.classes || ""),
-        onclick: config.onclick
-    }, config.label);
+                " " + (config.classes || "");
+                
+    
+    return config.submit ?
+        m("input[type=submit]", {
+            "class": classes,
+            value: config.label,
+            /* We can use the "onclick" event handler since
+               somehow it is also activated, when the form
+               is submitted by pressing the enter key.
+            */
+            onclick: function() {
+                config.onclick();
+                event.preventDefault();
+            }
+        }) :
+    
+        m("button", {
+            "class": classes,
+            onclick: config.onclick
+        }, config.label);
 };
 });

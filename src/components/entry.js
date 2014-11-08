@@ -19,7 +19,6 @@ return function(entry, index) {
     var edit = function() {
         m.route("edit/" + index);
     };
-    //m.route.bind(this, "edit/" + index);
 
     return m('div', [
         m('span', entry.title),
