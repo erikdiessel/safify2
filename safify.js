@@ -8,28 +8,28 @@ and viewing.
 
 /// <reference path="../vendor/mithril.d.ts" />
 
-var s = (function(s) {
-	s.entry = {};
+define(function(require) {
     
-    s.entry.controller = function(entry, index) {
-    	this.title = entry.name;
-        
-        this.edit = m.route.bind(this, "edit/" + index);
+var m  = require('../vendor/mithril'),
+    l  = require('../localization/localized'),
+button = require('../subcomponents/button');
+
+// should be augmented with markup
+return function(entry, index) {
+    var edit = function() {
+        m.route("edit/" + index);
     };
-    
-    // should be augmented with markup
-    s.entry.view = function(ctrl) {
-    	return m('div', [
-        	m('span', ctrl.title),
-            s.button({
-            	onclick: ctrl.edit,
-                label: ctrl.l.edit
-            })
-        ]);
-    };
-    
-    return s;
-}(s || {}));
+
+    return m('div', [
+        m('span', entry.title),
+        button({
+            onclick: edit,
+            label: l.edit
+        })
+    ]);
+};
+
+});
 define(function(require) {
 
 var md = require('../framework/mediator'),
@@ -46,17 +46,20 @@ var messages = {
 
 var message = "";
 
-for(var key in messages) {
-	console.log('key: '+ key);
+Object.keys(messages).forEach(function(key) {
+ 	console.log('key: '+ key);
 
 	md().on(key, function() {
-    	//console.log('key: ' +  key);
+    	console.log('key: ' +  key + " triggered");
     	message = messages[key];
-        m.redraw(true);
+        /* We signalize the end of an asynchronous
+           computation to force a redraw.
+        */
+        m.endComputation();
     });
-}
+});
 
-return errorMessages = function() {
+return function() {
 	return m('div.error', message);
 };
 
@@ -83,6 +86,9 @@ var Mediator = function() {
                 func.apply(this, additionalInformation);
             });
         }
+        // Debugging:
+        console.log("Event " + event + " was published with data: " +
+                    Array.prototype.slice.call(arguments, 1));
     };
     
     // Currying of *pub* for use as a callback
@@ -130,8 +136,6 @@ autosubmits a given form.
 */
 
 define(function() {
-	
-//namespace('s.helpers');
 
 
 // Converts a given html-string into the element represented
@@ -181,6 +185,9 @@ function(form/*::HTMLElement*/, siteOrigin/*::string*/)/*::void*/ {
     }
 };
  
+/* Returns a form element, which has all given information
+   already filled in. It can then be submitted directly.
+*/
 return function(formHTML/*::string*/, siteOrigin/*::string*/,
 	     username/*::string*/, password/*::string*/)/*::HTMLElement*/ {
 	var form = htmlToElement(formHTML);
@@ -413,8 +420,13 @@ var s = (function(s) {
 define(['../helpers/bind', '../helpers/reduce_polyfill',
 		'../helpers/extend',
 		'json!./main.json', 'json!./generator.json',
-        'json!./login.json', 'json!./errorMessages.json'],
-       function(__, __, extend, main, generator, login, errorMessages) {
+        'json!./login.json', 'json!./errorMessages.json',
+        'json!./entry.json', 'json!./edit.json',
+        'json!./overview.json',
+        'json!./register.json'],
+       function(__, __, extend, main, generator, login,
+                errorMessages, entry, edit, overview,
+                register) {
 	
 
 /*function(require) {
@@ -425,7 +437,10 @@ main = require('json!./main.json');*/
 
 
 
-var localizations = [main, generator, login, errorMessages];
+var localizations = Array.prototy.slice.call(arguments, 3);
+
+/*var localizations = [main, generator, login,
+      errorMessages, entry, edit, overview, register];*/
 
 var locale = (navigator.language || navigator.userLanguage).substring(0, 2);
 
@@ -459,21 +474,6 @@ var s = (function(s) {
     
     return s;
 }(s || {}));
-(function() {
-
-namespace('s.pages.register');
-
-s.pages.register.l = {
-	en: {
-    	username: "Username",
-        password: "Password",
-        passwordRepetition: "Password Repetition",
-        register: "Register"
-    }
-}
-
-
-}());
 require.config({
 	paths: {
         'text': '../vendor/requirejs_plugins/text',
@@ -507,7 +507,8 @@ login = require('../pages/login'),
 edit  = require('../pages/edit'),
 generator = require('../pages/generator'),
 overview  = require('../pages/overview'),
-register  = require('../pages/register');
+register  = require('../pages/register'),
+_ = require('../model/transitions');
 
 setTimeout(function() {
     m.route(document.body, "", {
@@ -639,36 +640,6 @@ define(['../framework/mediator', '../helpers/request'],
     };
 });
 /*
-Entry class
-===========
-
-Represents an entry and provides utility methods for it.
-*/
-
-(function() {
-	namespace('s');
-    s.Entry = function(blueprint/*::{}?*/) {
-    	// initialize attributes
-        blueprint = blueprint || {};
-    	this.title    = m.prop(blueprint.title || "");
-        this.username = m.prop(blueprint.username || "");
-        this.password = m.prop(blueprint.password || "");
-    }
-    
-    s.Entry.prototype.serialize = function() {
-    	return {
-        	title: this.title,
-        	username: this.username,
-            password: this.password
-        };
-    };
-    
-    // static function
-    s.Entry.deserialize = function(entry)/*::Entry*/ {
-		return new Entry(entry);
-    }
-}());
-/*
 The model part of the generator
 ==============================
 
@@ -730,6 +701,43 @@ define(function() {
         }).join('');
     };
 
+
+});
+/*
+Entry class
+===========
+
+Represents an entry and provides utility methods for it
+so that the attributes are mithril-Properties for direct
+access with input fields.
+*/
+
+define(function(require) {
+
+var m = require('../vendor/mithril');
+	
+var Entry = function(blueprint/*::{}?*/) {
+    // initialize attributes
+    blueprint = blueprint || {};
+    this.title    = m.prop(blueprint.title || "");
+    this.username = m.prop(blueprint.username || "");
+    this.password = m.prop(blueprint.password || "");
+}
+
+Entry.prototype.serialize = function() {
+    return {
+        title: this.title(),
+        username: this.username(),
+        password: this.password()
+    };
+};
+
+// // static function
+// Entry.deserialize = function(entry)/*::Entry*/ {
+//     return new Entry(entry);
+// }
+
+return Entry;
 
 });
 /*
@@ -945,13 +953,16 @@ define(['../vendor/sjcl'], function(sjcl) {
     };
     
 });
-(function() {
+define(function(require) {
+
+var md = require('../framework/mediator'),
+     m = require('../vendor/mithril');
 
 md().on('loggedIn', function() {
 	m.route('overview');
 });
 
-}());
+});
 /*
 User module
 ===========
@@ -977,16 +988,25 @@ var _password = undefined;
 var entries = [];
 
 function save() {
-	var serverPassword = api.serverPassword(username, password);
-    var encryptedData = security.encrypt(username,
-    							  password,
+	var serverPassword = security.serverPassword(_username, _password);
+    var encryptedData = security.encrypt(_username,
+    							  _password,
                                   JSON.stringify(entries));
-	api.savePasswordList(username, serverPassword, encryptedData);
+	api.savePasswordList(_username, serverPassword, encryptedData);
 }
 
 md().on('login', function(username, password) {
+    /* Since we do an asynchronous call and want to show (in case)
+       all error messages, we have to signalize Mithril the start
+       of an asynchronous call. This is later resolved in the 
+       errorMessages - module with m.endComputation, such that a
+       redraw is triggered. In the case of no existing error messages
+       we signalize the end with m.endComputation inside dataReceived
+    */
+    m.startComputation();
+    
 	_username = username; _password = password;
-	var serverPassword = s.serverPassword(_username, _password);
+	var serverPassword = security.serverPassword(_username, _password);
 	api.retrieveData(username, serverPassword);
 });
 
@@ -1016,7 +1036,12 @@ md().on('dataReceived', function(data) {
     var decrypted = security.decrypt(_username, _password, data);
     entries = JSON.parse(decrypted);
     md().pub('loggedIn');
+    m.endComputation();
 });
+
+return {
+    getEntries: function() { return entries; }
+};
     
 });
 
@@ -1187,52 +1212,52 @@ edited and deleted.
 define(function(require) {
 
 var m  = require('../vendor/mithril'),
+   md  = require('../framework/mediator')
+    l  = require('../localization/localized'),
 input  = require('../subcomponents/input'),
-button = require('../subcomponents/button')
-user   = require('../model/user');
+button = require('../subcomponents/button'),
+user   = require('../model/user'),
+PropertyEntry  = require('../model/propertyEntry');
 	
 function controller() {
-    // localization
-    this.l = s.localize(s.edit.l);
-
     this.entryId = m.route.param("entryId");
 
-    this.entry = user.entries.getEntry(this.entryId);
+    this.entry = new PropertyEntry(user.getEntries()[this.entryId]);
 
     this.saveEntry = function() {
-        md().pub('changeEntry', this.entryId, this.entry);
+        md().pub('changeEntry', this.entryId, this.entry.serialize());
         m.route('overview');   
-    }
+    }.bind(this);
 
     // TODO: Change this into displaying a confirmation
     // dialog first
-    this.deleteEntry = user.deleteEntry.bind(this, index);
+    //this.deleteEntry = user.deleteEntry.bind(this, index);
 };
 
 function view(ctrl) {
     return m('div', [
-        s.input({
+        input({
             type: 'text',
-            label: ctrl.l.title,
+            label: l.title,
             value: ctrl.entry.title
         }),
-        s.input({
+        input({
             type: 'text',
-            label: ctrl.l.username,
+            label: l.username,
             value: ctrl.entry.username
         }),
-        s.input({
+        input({
             type: 'text',
-            label: ctrl.l.password,
+            label: l.password,
             value: ctrl.entry.password
         }),
-        s.button({
+        button({
             onclick: ctrl.saveEntry,
-            label: ctrl.l.save,
+            label: l.save,
             callToAction: true
         }),
-        s.button({
-            label: ctrl.l.delete,
+        button({
+            label: l.delete,
             onclick: ctrl.deleteEntry,
             classes: ['danger']
         })
@@ -1371,8 +1396,9 @@ function controller() {
     this.wrong_username = m.prop(false);
     this.no_network = m.prop(false);
 
-    this.login = function() {
+    this.login = function(event) {
         md().pub('login', this.username(), this.password());
+        
         /*.subscribe('logged_in', function() { m.route('overview'); })
         .subscribe('authentification_failed', this.authentificationFailed)
         .subscribe('username_not_found', this.usernameNotFound)
@@ -1380,8 +1406,6 @@ function controller() {
     }.bind(this);        
 
     // Redirect to the generator page
-    // We pass along undefined, so that no other argument
-    // is appended by calling this bounded function
     this.toGenerator = function() { m.route('generator'); };
 
     this.toRegistration = function() { m.route('register'); };
@@ -1392,21 +1416,26 @@ function controller() {
 function view(ctrl) {
     return m('div', [
         errorMessages(),
-        input({
-            value: ctrl.username,
-            label: l.username,
-            type: 'text',
-        }),
-        input({
-            value: ctrl.password,
-            label: l.password,
-            type: 'password'
-        }),
-        button({
-            onclick: ctrl.login,
-            label: l.login,
-            callToAction: true
-        }),
+        m('form', [
+            input({
+                value: ctrl.username,
+                label: l.username,
+                type: 'text',
+                autofocus: true
+            }),
+            input({
+                value: ctrl.password,
+                label: l.password,
+                type: 'password'
+            }),
+            button({
+                onclick: ctrl.login,
+                label: l.login,
+                callToAction: true,
+                submit: true
+            })
+        ]),
+        
         button({
             onclick: ctrl.toRegistration,
             label: l.register,
@@ -1440,19 +1469,27 @@ the corresponding actions to edit and show an entry.
 
 define(function(require) {
 
-var m = require('../vendor/mithril'),
-entry = require('../components/entry');
+var m          = require('../vendor/mithril'),
+    l          = require('../localization/localized'),
+entryComponent = require('../components/entry'),
+user           = require('../model/user'),
+button        = require('../subcomponents/button');
     
 function controller() {
-    this.entryControllers = s.user.entries.map(function(entry, index) {
-        return new s.entry.controller(entry, index);
-    });
+
 };
 
 function view(ctrl) {
-    return m('div', ctrl.entryControllers.map(function(entryCtrl) {
-        return s.entry.view(entryCtrl);
-    }));
+    return m('div', [
+        m('div', user.getEntries().map(function(entry, index) {
+            return entryComponent(entry, index);
+        })),
+        button({
+            onclick: function() { m.route('/new') },
+            callToAction: true,
+            label: l.newEntry
+        })
+    ]);
 };
     
 return {
@@ -1531,16 +1568,34 @@ a single function which is the view.
 //   quiet: bool,
 //   // string of additonally attached classes
 //   classes: string
+//   // whether this is is an input-submit button for a form
+//   submit: bool
 // }
 return function(config) {
-    return m("button", {
-        "class": 
-            "topcoat-button" + (config.large ? "--large" : "") +
+    var classes = "topcoat-button" + (config.large ? "--large" : "") +
                 (config.callToAction ? "--cta" : "") +
                 (config.quiet ? "--quiet": "") +
-            " " + (config.classes || ""),
-        onclick: config.onclick
-    }, config.label);
+                " " + (config.classes || "");
+                
+    
+    return config.submit ?
+        m("input[type=submit]", {
+            "class": classes,
+            value: config.label,
+            /* We can use the "onclick" event handler since
+               somehow it is also activated, when the form
+               is submitted by pressing the enter key.
+            */
+            onclick: function() {
+                config.onclick();
+                event.preventDefault();
+            }
+        }) :
+    
+        m("button", {
+            "class": classes,
+            onclick: config.onclick
+        }, config.label);
 };
 });
 /*
@@ -1603,6 +1658,7 @@ interface InputOptions {
     label: string;
     value: MithrilProperty;
     type: string;
+    autofocus: bool
 }
 */
 
@@ -1614,7 +1670,8 @@ return function(config/*::InputOptions*/) /*::MithrilVirtualElement*/ {
             type: config.type,
             value: config.value(),
             onchange: m.withAttr('value', config.value),
-            placeholder: config.label
+            placeholder: config.label,
+            autofocus: config.autofocus
         }),
         config.label
     ]);

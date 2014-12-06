@@ -1,9 +1,14 @@
 {
 
 "en": {
-	"authentificationFailed": "Username or password is wrong.",
-    "usernameUsed": "This username is already in use.",
-    "usernameNotFound": "This username does not exist."
+    "errorMessages": {
+        "authentificationFailed": "Username or password is wrong.",
+        "usernameUsed": "This username is already in use.",
+        "usernameNotFound": "This username does not exist.",
+        "repetitionDoesNotMatch": "The password repetition doesn't match the password.",
+        "usernameMissing": "Please enter a username.",
+        "passwordMissing": "Please enter a password"
+    }
 }
 
 }

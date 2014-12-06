@@ -1,15 +1,22 @@
 define(function(require) {
 
 var md = require('../framework/mediator'),
-l      = require('../localization/localized');
+l      = require('../localization/localized'),
+extend = require('../helpers/extend');
 
+/*
 var messages = {
 	'authentificationFailed': l.authentificationFailed,
     'usernameUsed': l.usernameUsed,
     'usernameNotFound': l.usernameNotFound,
+    'repetitionDoesNotMatch': l.
     // reset message if this happens
     'transitioned': ""
-};
+}; */
+
+var messages = extend(l.errorMessages, {
+    "transitioned": ""
+});
 
 
 var message = "";

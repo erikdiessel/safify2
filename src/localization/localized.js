@@ -3,21 +3,18 @@ define(['../helpers/bind', '../helpers/reduce_polyfill',
 		'json!./main.json', 'json!./generator.json',
         'json!./login.json', 'json!./errorMessages.json',
         'json!./entry.json', 'json!./edit.json',
-        'json!./overview.json'],
-       function(__, __, extend, main, generator, login,
-                errorMessages, entry, edit, overview) {
-	
-
-/*function(require) {
-
-var __ = require('../helpers/bind'),
-__ = require('../helpers/reduce_polyfill'),
-main = require('json!./main.json');*/
+        'json!./overview.json',
+        'json!./register.json'],
+       /*function(__, __, extend, main, generator, login,
+                errorMessages, entry, edit, overview,
+                register) {*/
+         function(__, __, extend) {
 
 
+var localizations = Array.prototype.slice.call(arguments, 3);
 
-var localizations = [main, generator, login,
-      errorMessages, entry, edit, overview];
+/*var localizations = [main, generator, login,
+      errorMessages, entry, edit, overview, register];*/
 
 var locale = (navigator.language || navigator.userLanguage).substring(0, 2);
 

@@ -18,7 +18,7 @@ button = require('../subcomponents/button'),
 __	   = require('../helpers/bind'),
 user   = require('../model/user'),
 l      = require('../localization/localized'),
-errorMessages = require('../components/errorMessages');
+header = require('../components/header');
 
     
 function controller() {
@@ -48,7 +48,7 @@ function controller() {
 // TODO: augment the markup
 function view(ctrl) {
     return m('div', [
-        errorMessages(),
+        header(),
         m('form', [
             input({
                 value: ctrl.username,

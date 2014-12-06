@@ -30,6 +30,18 @@ function save() {
 	api.savePasswordList(_username, serverPassword, encryptedData);
 }
 
+function checkUsernamePassword(username, password) {
+    if (username == "") {
+        md.pub('usernameMissing');
+        return false;
+    } else if (password == "") {
+        md.pub('passwordMissing');
+        return true;
+    } else {
+        return true;
+    }
+}
+
 md().on('login', function(username, password) {
     /* Since we do an asynchronous call and want to show (in case)
        all error messages, we have to signalize Mithril the start
@@ -38,17 +50,21 @@ md().on('login', function(username, password) {
        redraw is triggered. In the case of no existing error messages
        we signalize the end with m.endComputation inside dataReceived
     */
-    m.startComputation();
-    
-	_username = username; _password = password;
-	var serverPassword = security.serverPassword(_username, _password);
-	api.retrieveData(username, serverPassword);
+    if (checkUsernamePassword(username, password)) {
+        m.startComputation();
+
+        _username = username; _password = password;
+        var serverPassword = security.serverPassword(_username, _password);
+        api.retrieveData(username, serverPassword);
+    }
 });
 
 md().on('register', function(username, password) {
-	_username = username; _password = password;
-	var serverPassword = security.serverPassword(_username, _password);
-    api.registerUser(_username, serverPassword);
+    if (checkUsernamePassword(username, password)) {
+        _username = username; _password = password;
+        var serverPassword = security.serverPassword(_username, _password);
+        api.registerUser(_username, serverPassword);
+    }
 });
 
 md().on('createEntry', function(entry) {

@@ -43,7 +43,7 @@ return function(config) {
                somehow it is also activated, when the form
                is submitted by pressing the enter key.
             */
-            onclick: function() {
+            onclick: function(event) {
                 config.onclick();
                 event.preventDefault();
             }
